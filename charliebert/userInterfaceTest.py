@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.4
 import RPi.GPIO as GPIO 
+from collections import deque
 GPIO.setmode(GPIO.BCM)  
 
 # Switches 
@@ -30,36 +31,18 @@ for l, name in leds.items():
         
 # Increment active bank (cycle through leds)
 def incrementBank():
-    print("IncrementBank: states = {}".format(ledStates))
-    try:
-        activeLedIndex = ledStates.index(GPIO.HIGH)
-    except:
-        activeLedIndex = 0
-        ledStates = [GPIO.LOW] * len(ledPorts) 
-        ledStates[activeLedIndex] = GPIO.HIGH
-    print("IncrementBank: high state = {:d}".format(activeLedIndex))
-    activeLedName = ledNames[activeLedIndex]
-    print("IncrementBank: Active led = {}".format(activeLedName))
-    activeLed = ledPorts[activeLedIndex]
-    GPIO.output(activeLed, GPIO.LOW)
-    ledStates[activeLedIndex] = GPIO.LOW
-    activeLedIndex = (activeLedIndex + 1) % len(ledPorts)
-    activeLed = ledPorts[activeLedIndex]
-    activeLedName = ledNames[activeLedIndex]
-    print("IncrementBank: New active led = {}".format(activeLedName))
-    GPIO.output(activeLed, GPIO.HIGH)
-    ledStates[activeLedIndex] = GPIO.HIGH
-    
-    #print("IncrementBank: defaultLed = {}".format(defaultLed))
-    #print("IncrementBank: Active led = {}".format(activeLedName))
-    #activeLedIndex = ledNames.index(activeLedName)
-    #activeLed = ledPorts[activeLedIndex]
-    #GPIO.output(activeLed, GPIO.LOW)
-    #activeLedIndex = (activeLedIndex + 1) % len(ledNames)
-    #activeLed = ledPorts[activeLedIndex]
-    #activeLedName = ledNames[activeLedIndex]
-    #print("IncrementBank: New active led = {}".format(activeLedName))
-    #GPIO.output(activeLed, GPIO.HIGH)
+    activeLeds = 0
+    ledStates = deque()
+    for l in ledPorts:
+        ledStates.append(GPIO.input(l))
+        if ledStates[-1] == GPIO.HIGH:
+            activeLeds = activeLeds + 1
+    if activeLeds == 0:
+        ledStates[0] = GPIO.HIGH
+    ledStates.rotate(1)
+    for l in ledPorts:
+        GPIO.output(l, ledStates[ledPorts.index(l)])
+
 
 # Callback for switches 
 def callbackSwitch(channel):  
