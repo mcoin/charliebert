@@ -9,7 +9,7 @@ GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
   
 # Callback for switches 
 def callbackSwitch(channel):  
-    print("Edge detected on channel %d", channel)
+    print("Edge detected on channel {:d}".format(channel))
     
 GPIO.add_event_detect(20, GPIO.FALLING, callback=callbackSwitch, bouncetime=300)  
 GPIO.add_event_detect(21, GPIO.FALLING, callback=callbackSwitch, bouncetime=300)  
