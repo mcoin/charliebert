@@ -14,23 +14,52 @@ for s in switches:
 #GPIO.setup(12, GPIO.OUT)
 #GPIO.output(12, GPIO.HIGH)
 ledPorts = [12, 16]
-ledNames = ["LED1", "LED2"]
+ledNames = ["LED 1", "LED 2"]
+ledStates = [GPIO.HIGH, GPIO.LOW]
 assert(len(ledPorts) == len(ledNames))
 leds = dict(zip(ledPorts, ledNames))
 defaultLed = "LED 1"
-assert(defaultLed in leds.values())
+assert(defaultLed in ledNames)
 activeLed = ledPorts[ledNames.index(defaultLed)]
-for l, name in leds:
+#activeLedName = defaultLed
+activeLedName = leds[activeLed]
+#print("Main: active led <{:d}>".format(activeLed))
+for l, name in leds.items():
     GPIO.setup(l, GPIO.OUT)
     GPIO.output(l, GPIO.HIGH if name == defaultLed else GPIO.LOW)
         
 # Increment active bank (cycle through leds)
 def incrementBank():
-    activeLedIndex = ledPorts.index(activeLed)
-    GPIO.output(activeLed, GPIO.LOW)
-    activeLedIndex = activeLedIndex + 1
+    print("IncrementBank: states = {}".format(ledStates))
+    try:
+        activeLedIndex = ledStates.index(GPIO.HIGH)
+    except:
+        activeLedIndex = 0
+        ledStates = [GPIO.LOW] * len(ledPorts) 
+        ledStates[activeLedIndex] = GPIO.HIGH
+    print("IncrementBank: high state = {:d}".format(activeLedIndex))
+    activeLedName = ledNames[activeLedIndex]
+    print("IncrementBank: Active led = {}".format(activeLedName))
     activeLed = ledPorts[activeLedIndex]
+    GPIO.output(activeLed, GPIO.LOW)
+    ledStates[activeLedIndex] = GPIO.LOW
+    activeLedIndex = (activeLedIndex + 1) % len(ledPorts)
+    activeLed = ledPorts[activeLedIndex]
+    activeLedName = ledNames[activeLedIndex]
+    print("IncrementBank: New active led = {}".format(activeLedName))
     GPIO.output(activeLed, GPIO.HIGH)
+    ledStates[activeLedIndex] = GPIO.HIGH
+    
+    #print("IncrementBank: defaultLed = {}".format(defaultLed))
+    #print("IncrementBank: Active led = {}".format(activeLedName))
+    #activeLedIndex = ledNames.index(activeLedName)
+    #activeLed = ledPorts[activeLedIndex]
+    #GPIO.output(activeLed, GPIO.LOW)
+    #activeLedIndex = (activeLedIndex + 1) % len(ledNames)
+    #activeLed = ledPorts[activeLedIndex]
+    #activeLedName = ledNames[activeLedIndex]
+    #print("IncrementBank: New active led = {}".format(activeLedName))
+    #GPIO.output(activeLed, GPIO.HIGH)
 
 # Callback for switches 
 def callbackSwitch(channel):  
