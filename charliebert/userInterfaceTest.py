@@ -15,7 +15,7 @@ for s in switches:
 #GPIO.output(12, GPIO.HIGH)
 ledPorts = [12, 16]
 ledNames = ["LED1", "LED2"]
-assert(ledPorts.len == ledNames.len)
+assert(len(ledPorts) == len(ledNames))
 leds = dict(zip(ledPorts, ledNames))
 defaultLed = "LED 1"
 assert(defaultLed in leds.values())
