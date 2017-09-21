@@ -6,7 +6,12 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)  
 GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)  
   
-  
+# LEDs
+GPIO.setup(12, GPIO.OUT)
+GPIO.output(12, GPIO.HIGH)
+GPIO.setup(16, GPIO.OUT)
+GPIO.output(16, GPIO.HIGH)
+
 # Callback for switches 
 def callbackSwitch(channel):  
     print("Edge detected on channel {:d}".format(channel))
@@ -19,6 +24,8 @@ try:
     while True:
         pass 
   
-except KeyboardInterrupt:  
-    GPIO.cleanup()       # clean up GPIO on CTRL+C exit  
-GPIO.cleanup()           # clean up GPIO on normal exit 
+except KeyboardInterrupt:
+    print("Stop (Ctrl-C)")
+finally:
+    # clean up GPIO on exit  
+    GPIO.cleanup()
