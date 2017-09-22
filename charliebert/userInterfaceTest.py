@@ -21,6 +21,7 @@ def incrementBank():
 
 # Callback for switches 
 def callbackSwitch(channel):  
+    global switches
     print("Edge detected on channel {:d} [Switch ID: {}]".format(channel, switches[channel]))
     if switches[channel] == bankSwitch:
         incrementBank()
