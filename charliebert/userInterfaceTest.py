@@ -6,6 +6,8 @@ GPIO.setmode(GPIO.BCM)
         
 # Increment active bank (cycle through leds)
 def incrementBank():
+    global ledPorts
+
     activeLeds = 0
     ledStates = deque()
     for l in ledPorts:
@@ -21,13 +23,16 @@ def incrementBank():
 
 # Callback for switches 
 def callbackSwitch(channel):  
-    global switches
+    global switches, bankSwitch
+
     print("Edge detected on channel {:d} [Switch ID: {}]".format(channel, switches[channel]))
     if switches[channel] == bankSwitch:
         incrementBank()
     
 
 def main():    
+    global switches, bankSwitch, ledPorts
+
     # Switches 
     switches = { 
                 14: "Switch 1",
