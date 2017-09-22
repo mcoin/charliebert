@@ -5,8 +5,26 @@ GPIO.setmode(GPIO.BCM)
 
 # Switches 
 #GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)  
-switches = { 20: "Switch 1", 21: "Switch 2"}
-bankSwitch = "Switch 1"
+switches = { 
+            14: "Switch 1", 
+            15: "Switch 2", 
+            18: "Switch 3", 
+            23: "Switch 4", 
+            24: "Switch 5", 
+            25: "Switch 6", 
+            8: "Switch 7", 
+            7: "Switch 8", 
+            12: "Switch 9", 
+            16: "Switch 10", 
+            20: "Switch 11", 
+            21: "Switch 12", 
+            5: "Play/Pause", 
+            11: "Back", 
+            9: "Forward", 
+            17: "Mode", 
+            27: "Bank"
+            }
+bankSwitch = "Bank"
 assert(bankSwitch in switches.values())
 for s in switches:
     GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)  
@@ -14,12 +32,12 @@ for s in switches:
 # LEDs
 #GPIO.setup(12, GPIO.OUT)
 #GPIO.output(12, GPIO.HIGH)
-ledPorts = [12, 16]
-ledNames = ["LED 1", "LED 2"]
+ledPorts = [6, 13, 19, 26]
+ledNames = ["Bank A", "Bank B", "Bank C", "Bank D"]
 ledStates = [GPIO.HIGH, GPIO.LOW]
 assert(len(ledPorts) == len(ledNames))
 leds = dict(zip(ledPorts, ledNames))
-defaultLed = "LED 1"
+defaultLed = "Bank A"
 assert(defaultLed in ledNames)
 activeLed = ledPorts[ledNames.index(defaultLed)]
 #activeLedName = defaultLed
