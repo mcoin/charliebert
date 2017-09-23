@@ -9,10 +9,6 @@ import logging
 class UserInterface:
     
     def __init__(self):
-        # Logging
-        logging.basicConfig(filename='userInterface.log',level=logging.DEBUG)
-        logging.info("Starting instance of UserInterface")
-        
         # GPIO settings
         GPIO.setwarnings(True)
         GPIO.setmode(GPIO.BCM)
@@ -222,6 +218,10 @@ class UserInterface:
         self.stopRequested = True
 
 if __name__ == '__main__':
+    # Logging
+    logging.basicConfig(filename='userInterface.log',level=logging.DEBUG)
+    logging.info("Starting instance of UserInterface")
+        
     logging.info("Creating instance of UserInterface") 
     ui = UserInterface()
     try:
