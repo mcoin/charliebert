@@ -3,7 +3,7 @@ import threading
 import logging
 #import os
 #import sys
-import userInterface
+from userInterface import UserInterface
 
 
 class UserInterfaceThread(threading.Thread):
@@ -14,7 +14,8 @@ class UserInterfaceThread(threading.Thread):
         
     def run(self):
         logging.debug("UserInterfaceThread starting")
-        self.ui.run()
+        self.ui.run(self.stopper)
+        logging.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
     def __init__(self, stopper):
@@ -23,9 +24,13 @@ class SonosInterfaceThread(threading.Thread):
         
     def run(self):
         logging.debug("SonosInterfaceThread starting")
-        while not self.stopper.is_set():
-            time.sleep(1)
-            logging.debug("Sonos Interface")
+        try:
+            while not self.stopper.is_set():
+                time.sleep(1)
+                logging.debug("Sonos Interface")
+        except KeyboardInterrupt:
+            logging.debug("Sonos Interface stopped (Ctrl-C)")
+        logging.debug("SonosInterfaceThread stopping")
 
 def charliebert():
     # State indicator

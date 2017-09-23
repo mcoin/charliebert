@@ -180,7 +180,7 @@ class UserInterface:
             self.activateMode()
         
     
-    def run(self):            
+    def run(self, stopper=None):            
         try:
             logging.info("Starting main loop")  
             print("Reacting to interrupts from switches")  
@@ -207,6 +207,13 @@ class UserInterface:
                 if self.stopRequested:
                     logging.debug("Requesting stop")
                     break
+
+                if stopper is not None:
+                    try:
+                        if stopper.is_set():
+                            break
+                    except:
+                        pass
  
         except KeyboardInterrupt:
             logging.info("Stop (Ctrl-C from main loop)") 
@@ -233,4 +240,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         logging.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
-	ui.requestStop()
+        ui.requestStop()
