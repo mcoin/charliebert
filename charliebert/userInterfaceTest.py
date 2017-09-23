@@ -7,7 +7,7 @@ from time import sleep
     
 class UserInterface:
     
-    def __init__():
+    def __init__(self):
         # GPIO settings
         GPIO.setwarnings(True)
         GPIO.setmode(GPIO.BCM)  
@@ -55,13 +55,13 @@ class UserInterface:
             GPIO.output(l, GPIO.HIGH if name == defaultLed else GPIO.LOW)
          
         for s in self.switches:
-            GPIO.add_event_detect(s, GPIO.FALLING, callback=callbackSwitch, bouncetime=300)  
+            GPIO.add_event_detect(s, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=300)  
         
     
         # Rotary encoder
-        # Current Volume    
-        self.Volume = 0                                    
-        self.NewCounter = 0   
+        # Current volume    
+        self.volume = 0                                    
+        self.newCounter = 0   
         
         # Encoder input A
         self.encoderA = 10                  
@@ -79,13 +79,14 @@ class UserInterface:
         GPIO.setup(self.encoderB, GPIO.IN)
         # setup callback thread for the A and B encoder 
         # use interrupts for all inputs
-        GPIO.add_event_detect(self.encoderA, GPIO.RISING, callback=rotary_interrupt) # NO bouncetime 
-        GPIO.add_event_detect(self.encoderB, GPIO.RISING, callback=rotary_interrupt) # NO bouncetime 
+        GPIO.add_event_detect(self.encoderA, GPIO.RISING, callback=self.rotary_interrupt) # NO bouncetime 
+        GPIO.add_event_detect(self.encoderB, GPIO.RISING, callback=self.rotary_interrupt) # NO bouncetime 
     
+	self.stopRequested = False
     
     # Rotarty encoder interrupt:
     # this one is called for both inputs from rotary switch (A and B)
-    def rotary_interrupt(A_or_B):
+    def rotary_interrupt(self, A_or_B):
         # read both switches
         Switch_A = GPIO.input(self.encoderA)
         Switch_B = GPIO.input(self.encoderB)
@@ -100,7 +101,7 @@ class UserInterface:
     
         if (Switch_A and Switch_B):                        # Both one active? Yes -> end of sequence
             self.rotaryLock.acquire()                        # get lock 
-            if A_or_B == Enc_B:                            # Turning direction depends on 
+            if A_or_B == self.encoderB:                            # Turning direction depends on 
                 self.rotaryCounter += 1                        # which input gave last interrupt
             else:                                        # so depending on direction either
                 self.rotaryCounter -= 1                        # increase or decrease counter
@@ -108,7 +109,7 @@ class UserInterface:
 
 
     # Increment active bank (cycle through leds)
-    def incrementBank():    
+    def incrementBank(self):    
         activeLeds = 0
         ledStates = deque()
         for l in self.ledPorts:
@@ -123,13 +124,13 @@ class UserInterface:
     
     
     # Callback for switches 
-    def callbackSwitch(channel):      
+    def callbackSwitch(self, channel):      
         print("Edge detected on channel {:d} [Switch ID: {}]".format(channel, self.switches[channel]))
         if self.switches[channel] == self.bankSwitch:
-            incrementBank()
+            self.incrementBank()
         
     
-    def run():            
+    def run(self):            
         try:  
             print("Reacting to interrupts from switches")  
             while True:
@@ -139,17 +140,20 @@ class UserInterface:
                                                     # and reset them
                                                     
                 self.rotaryLock.acquire()                    # get lock for rotary switch
-                NewCounter = self.rotaryCounter            # get counter value
+                self.newCounter = self.rotaryCounter            # get counter value
                 self.rotaryCounter = 0                        # RESET IT TO 0
                 self.rotaryLock.release()                    # and release lock
                         
-                if (NewCounter !=0):                    # Counter has CHANGED
-                    Volume = Volume + NewCounter*abs(NewCounter)    # Decrease or increase volume 
-                    if Volume < 0:                        # limit volume to 0...100
-                        Volume = 0
-                    if Volume > 100:                    # limit volume to 0...100
-                        Volume = 100
-                    print("NewCounter: {:d}; Volume = {:d}".format(NewCounter, Volume))            # some test print
+                if self.newCounter != 0:                    # Counter has CHANGED
+                    self.volume = self.volume + self.newCounter*abs(self.newCounter)    # Decrease or increase volume 
+                    if self.volume < 0:                        # limit volume to 0...100
+                        self.volume = 0
+                    if self.volume > 100:                    # limit volume to 0...100
+                        self.volume = 100
+                    print("self.newCounter: {:d}; self.volume = {:d}".format(self.newCounter, self.volume))            # some test print
+		
+		if self.stopRequested:
+		   break
           
         except KeyboardInterrupt:
             print("Stop (Ctrl-C)")
@@ -157,7 +161,13 @@ class UserInterface:
             # clean up GPIO on exit  
             GPIO.cleanup()
 
+    def requestStop(self):
+	self.stopRequested = True
 
 if __name__ == '__main__':
     ui = UserInterface()
-    ui.run()
+    try:
+        ui.run()
+    except KeyboardInterrupt:
+        print("Stop (Ctrl-C) [from main]")
+	ui.requestStop()
