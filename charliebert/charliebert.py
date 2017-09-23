@@ -35,6 +35,7 @@ class SonosInterfaceThread(threading.Thread):
                     break
                 
                 logging.debug("Sonos Interface: Obtained command")
+                self.command.clear()
                 
         except KeyboardInterrupt:
             logging.debug("Sonos Interface stopped (Ctrl-C)")
