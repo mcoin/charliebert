@@ -9,6 +9,8 @@ import logging
 class UserInterface:
     
     def __init__(self):
+        logging.info("Initializing instance of UserInterface")
+        
         # GPIO settings
         GPIO.setwarnings(True)
         GPIO.setmode(GPIO.BCM)
@@ -207,7 +209,7 @@ class UserInterface:
                     break
  
         except KeyboardInterrupt:
-            logging.info("Stop (Ctrl-C from main loop") 
+            logging.info("Stop (Ctrl-C from main loop)") 
             print("Stop (Ctrl-C)")
         finally:
             # clean up GPIO on exit  
@@ -219,8 +221,10 @@ class UserInterface:
 
 if __name__ == '__main__':
     # Logging
-    logging.basicConfig(filename='userInterface.log',level=logging.DEBUG)
-    logging.info("Starting instance of UserInterface")
+    logging.basicConfig(filename='userInterface.log', 
+                        level=logging.DEBUG, 
+                        format='%(asctime)s %(levelname)s:%(message)s', 
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
         
     logging.info("Creating instance of UserInterface") 
     ui = UserInterface()
