@@ -45,7 +45,7 @@ class UserInterface:
         # Indicate whether alternate mode is on (upon holding down the Mode button)
         self.altMode = False
         
-        for s, name in self.switches.items:
+        for s, name in self.switches.items():
             GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             if name == self.modeSwitch:
                 self.modePort = s
@@ -139,7 +139,7 @@ class UserInterface:
     def activateMode(self):
         self.altMode = True
     def isAltModeOn(self):
-        if self.altMode and GPIO.input(self.modePort) == GPIO.HIGH:
+        if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
             return True 
         else:
             self.altMode = False
