@@ -19,15 +19,15 @@ class UserInterface:
         
         # Switches
         logging.debug("Setting up switches")
-        initSwitches()
+        self.initSwitches()
         
         # LEDs
         logging.debug("Setting up LEDs")
-        initLeds()
+        self.initLeds()
     
         # Rotary encoder
         logging.debug("Setting up rotary encoder")
-        initRotaryEncoder()
+        self.initRotaryEncoder()
     
         # Break the main loop if marked True
         self.stopRequested = False
