@@ -4,6 +4,7 @@ from collections import deque
 import threading
 from time import sleep
 import logging
+from distutils.cmd import Command
     
     
 class UserInterface:
@@ -29,6 +30,9 @@ class UserInterface:
     
         # Break the main loop if marked True
         self.stopRequested = False
+        
+        # Event to trigger an action from the server
+        self.command = None
     
     def initSwitches(self):
         # Switches: {Port, Name}
@@ -178,12 +182,20 @@ class UserInterface:
             self.incrementBank(self.isAltModeOn())
         elif self.switches[channel] == self.modeSwitch:
             self.activateMode()
+            
+        if self.command is not None:
+            try:
+                self.command.set()
+            except:
+                pass
         
     
-    def run(self, stopper=None):            
+    def run(self, stopper=None, command=None):         
         try:
             logging.info("Starting main loop")  
-            print("Reacting to interrupts from switches")  
+            print("Reacting to interrupts from switches")
+            self.command = command
+              
             while True:
                 sleep(0.1)  # sleep 100 msec       
                                                     # because of threading make sure no thread
@@ -203,6 +215,11 @@ class UserInterface:
                         self.volume = 100
                     logging.debug("New volume: {:d}".format(self.volume))
                     print("self.newCounter: {:d}; self.volume = {:d}".format(self.newCounter, self.volume))  # some test print
+                    if self.command is not None:
+                        try:
+                            self.command.set()
+                        except:
+                            pass
 
                 if self.stopRequested:
                     logging.debug("Requesting stop")
