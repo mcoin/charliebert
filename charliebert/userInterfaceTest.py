@@ -154,7 +154,7 @@ class UserInterface:
 		
 		if self.stopRequested:
 		   break
-          
+ 
         except KeyboardInterrupt:
             print("Stop (Ctrl-C)")
         finally:
