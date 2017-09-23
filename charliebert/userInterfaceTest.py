@@ -154,7 +154,7 @@ class UserInterface:
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF"))
         if self.switches[channel] == self.bankSwitch:
-            self.incrementBank(self.isAltModeOff())
+            self.incrementBank(self.isAltModeOn())
         elif self.switches[channel] == self.modeSwitch:
             self.activateMode()
         
