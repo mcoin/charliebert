@@ -122,8 +122,9 @@ class UserInterface:
 
 
     # Increment active bank (cycle through leds)
-    def incrementBank(self):    
+    def incrementBank(self, reverseOrder=False):    
         activeLeds = 0
+        increment = 1 if not reverseOrder else -1
         ledStates = deque()
         for l in self.ledPorts:
             ledStates.append(GPIO.input(l))
@@ -131,7 +132,7 @@ class UserInterface:
                 activeLeds = activeLeds + 1
         if activeLeds == 0:
             ledStates[0] = GPIO.HIGH
-        ledStates.rotate(1)
+        ledStates.rotate(increment)
         for l in self.ledPorts:
             GPIO.output(l, ledStates[self.ledPorts.index(l)])
     
@@ -144,6 +145,8 @@ class UserInterface:
         else:
             self.altMode = False
             return False
+    def isAltModeOff(self):
+        return not self.isAltModeOn()
     
     # Callback for switches 
     def callbackSwitch(self, channel):
@@ -151,7 +154,7 @@ class UserInterface:
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF"))
         if self.switches[channel] == self.bankSwitch:
-            self.incrementBank()
+            self.incrementBank(self.isAltModeOff())
         elif self.switches[channel] == self.modeSwitch:
             self.activateMode()
         
