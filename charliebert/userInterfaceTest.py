@@ -9,15 +9,31 @@ import logging
 class UserInterface:
     
     def __init__(self):
-        # GPIO settings
-        GPIO.setwarnings(True)
-        GPIO.setmode(GPIO.BCM)  
-
         # Logging
         logging.basicConfig(filename='userInterface.log',level=logging.DEBUG)
         logging.info("Starting instance of UserInterface")
         
-        # Switches 
+        # GPIO settings
+        GPIO.setwarnings(True)
+        GPIO.setmode(GPIO.BCM)
+        
+        # Switches
+        logging.debug("Setting up switches")
+        initSwitches()
+        
+        # LEDs
+        logging.debug("Setting up LEDs")
+        initLeds()
+    
+        # Rotary encoder
+        logging.debug("Setting up rotary encoder")
+        initRotaryEncoder()
+    
+        # Break the main loop if marked True
+        self.stopRequested = False
+    
+    def initSwitches(self):
+        # Switches: {Port, Name}
         self.switches = { 
                     14: "Switch 1",
                     15: "Switch 4",
@@ -37,41 +53,47 @@ class UserInterface:
                     17: "Bank",
                     27: "Mode"
                     }
-        self.bankSwitch = "Bank"
+        # Special switches
+        self.bankSwitch = "Bank" # Switch to a different playlist bank
+        self.modeSwitch = "Mode" # Hold down to activate alternate mode
+        self.modePort = 0 # Port for the mode switch
+        # Checks (Bank and Mode switch must be defined)
         assert(self.bankSwitch in self.switches.values())
-        self.modeSwitch = "Mode"
-        self.modePort = 0
         assert(self.modeSwitch in self.switches.values())
         # Indicate whether alternate mode is on (upon holding down the Mode button)
         self.altMode = False
-        
+        # Set ports as input with pull-up resistor
         for s, name in self.switches.items():
             GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            # Mark port for the Mode switch
             if name == self.modeSwitch:
                 self.modePort = s
+        # Define callbacks for switch presses
+        for s in self.switches:
+            GPIO.add_event_detect(s, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=300)  
 
-        
-        # LEDs
+    def initLeds(self):
+        # LEDs for the different playlist banks: Ports and names
         self.ledPorts = [6, 19, 13, 26]
         self.ledNames = ["Bank A", "Bank B", "Bank C", "Bank D"]
+        # Initial state of the bank leds (1st one ON)
         ledStates = [GPIO.HIGH, GPIO.LOW, GPIO.LOW, GPIO.LOW]
+        # Checks (the lists have to have the same number of elements)
         assert(len(self.ledPorts) == len(self.ledNames))
         assert(len(ledStates) == len(self.ledNames))
+        # LEDs: {Port, Name}
         leds = dict(zip(self.ledPorts, self.ledNames))
+        # Name of the LED which is ON by default at startup
         defaultLed = "Bank A"
         assert(defaultLed in self.ledNames)
         activeLed = self.ledPorts[self.ledNames.index(defaultLed)]
         activeLedName = leds[activeLed]
-        
+        # Set the corresponding ports as output with state HIGH for the 1st one
         for l, name in leds.items():
             GPIO.setup(l, GPIO.OUT)
             GPIO.output(l, GPIO.HIGH if name == defaultLed else GPIO.LOW)
-         
-        for s in self.switches:
-            GPIO.add_event_detect(s, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=300)  
-        
-    
-        # Rotary encoder
+
+    def initRotaryEncoder(self):
         # Current volume    
         self.volume = 0                                    
         self.newCounter = 0   
@@ -94,9 +116,7 @@ class UserInterface:
         # use interrupts for all inputs
         GPIO.add_event_detect(self.encoderA, GPIO.RISING, callback=self.rotary_interrupt)  # NO bouncetime 
         GPIO.add_event_detect(self.encoderB, GPIO.RISING, callback=self.rotary_interrupt)  # NO bouncetime 
-    
-	self.stopRequested = False
-    
+
     # Rotary encoder interrupt:
     # this one is called for both inputs from rotary switch (A and B)
     def rotary_interrupt(self, A_or_B):
@@ -150,6 +170,9 @@ class UserInterface:
     
     # Callback for switches 
     def callbackSwitch(self, channel):
+        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
+                                                                               channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF"))
         print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF"))
@@ -160,7 +183,8 @@ class UserInterface:
         
     
     def run(self):            
-        try:  
+        try:
+            logging.info("Starting main loop")  
             print("Reacting to interrupts from switches")  
             while True:
                 sleep(0.1)  # sleep 100 msec       
@@ -179,24 +203,30 @@ class UserInterface:
                         self.volume = 0
                     if self.volume > 100:  # limit volume to 0...100
                         self.volume = 100
+                    logging.debug("New volume: {:d}".format(self.volume))
                     print("self.newCounter: {:d}; self.volume = {:d}".format(self.newCounter, self.volume))  # some test print
 
                 if self.stopRequested:
-        		   break
+                    logging.debug("Requesting stop")
+                    break
  
         except KeyboardInterrupt:
+            logging.info("Stop (Ctrl-C from main loop") 
             print("Stop (Ctrl-C)")
         finally:
             # clean up GPIO on exit  
+            logging.debug("Cleaning up GPIO") 
             GPIO.cleanup()
 
     def requestStop(self):
         self.stopRequested = True
 
 if __name__ == '__main__':
+    logging.info("Creating instance of UserInterface") 
     ui = UserInterface()
     try:
         ui.run()
     except KeyboardInterrupt:
+        logging.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
 	ui.requestStop()
