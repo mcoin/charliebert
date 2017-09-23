@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 from collections import deque
 import threading
 from time import sleep
+import logging
     
     
 class UserInterface:
@@ -12,6 +13,10 @@ class UserInterface:
         GPIO.setwarnings(True)
         GPIO.setmode(GPIO.BCM)  
 
+        # Logging
+        logging.basicConfig(filename='userInterface.log',level=logging.DEBUG)
+        logging.info("Starting instance of UserInterface")
+        
         # Switches 
         self.switches = { 
                     14: "Switch 1",
@@ -34,8 +39,17 @@ class UserInterface:
                     }
         self.bankSwitch = "Bank"
         assert(self.bankSwitch in self.switches.values())
-        for s in self.switches:
-            GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)  
+        self.modeSwitch = "Mode"
+        self.modePort = 0
+        assert(self.modeSwitch in self.switches.values())
+        # Indicate whether alternate mode is on (upon holding down the Mode button)
+        self.altMode = False
+        
+        for s, name in self.switches.items:
+            GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            if name == self.modeSwitch:
+                self.modePort = s
+
         
         # LEDs
         self.ledPorts = [6, 19, 13, 26]
@@ -121,12 +135,25 @@ class UserInterface:
         for l in self.ledPorts:
             GPIO.output(l, ledStates[self.ledPorts.index(l)])
     
+    # Mode switch
+    def activateMode(self):
+        self.altMode = True
+    def isAltModeOn(self):
+        if self.altMode and GPIO.input(self.modePort) == GPIO.HIGH:
+            return True 
+        else:
+            self.altMode = False
+            return False
     
     # Callback for switches 
-    def callbackSwitch(self, channel):      
-        print("Edge detected on channel {:d} [Switch ID: {}]".format(channel, self.switches[channel]))
+    def callbackSwitch(self, channel):
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
+                                                                                    self.switches[channel], 
+                                                                                    "ON" if self.isAltModeOn() else "OFF"))
         if self.switches[channel] == self.bankSwitch:
             self.incrementBank()
+        elif self.switches[channel] == self.modeSwitch:
+            self.activateMode()
         
     
     def run(self):            
