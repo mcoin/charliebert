@@ -1,5 +1,6 @@
 import time
 import threading
+import Queue
 import logging
 #import os
 #import sys
@@ -51,7 +52,7 @@ def charliebert():
     # State indicator
     stopper = threading.Event()
     # Queue for commands
-    queue = queue.Queue()
+    queue = Queue.Queue()
     
     
     userInterfaceThread = UserInterfaceThread(stopper, queue)
@@ -69,7 +70,9 @@ def charliebert():
     except KeyboardInterrupt:
         logging.debug("Stop requested")
         stopper.set()
-        command.set()
+	while not queue.empty():
+            queue.get()
+        queue.put(None)
             
 
 if __name__ == '__main__':
