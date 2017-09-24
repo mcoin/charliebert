@@ -7,22 +7,22 @@ from userInterface import UserInterface
 
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, command):
+    def __init__(self, stopper, queue):
         super(UserInterfaceThread, self).__init__()
         self.stopper = stopper
-        self.command = command
+        self.queue = queue
         self.ui = UserInterface()
         
     def run(self):
         logging.debug("UserInterfaceThread starting")
-        self.ui.run(self.stopper, self.command)
+        self.ui.run(self.stopper, self.queue)
         logging.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
-    def __init__(self, stopper, command):
+    def __init__(self, stopper, queue):
         super(SonosInterfaceThread, self).__init__()
         self.stopper = stopper
-        self.command = command
+        self.queue = queue
         
     def run(self):
         logging.debug("SonosInterfaceThread starting")
@@ -30,12 +30,18 @@ class SonosInterfaceThread(threading.Thread):
             while not self.stopper.is_set():
                 #time.sleep(1)
                 logging.debug("Sonos Interface: Waiting for a command to execute")
-                self.command.wait()
-                if self.stopper.is_set():
+                command = self.queue.get()
+                if command is None:
                     break
-                
-                logging.debug("Sonos Interface: Obtained command")
-                self.command.clear()
+                logging.debug("Sonos Interface: Obtained command {}".format(command))
+                self.queue.task_done()
+
+                #self.command.wait()
+                #if self.stopper.is_set():
+                #    break
+                #
+                #logging.debug("Sonos Interface: Obtained command")
+                #self.command.clear()
                 
         except KeyboardInterrupt:
             logging.debug("Sonos Interface stopped (Ctrl-C)")
@@ -44,11 +50,12 @@ class SonosInterfaceThread(threading.Thread):
 def charliebert():
     # State indicator
     stopper = threading.Event()
-    # Signal for a new command to execute
-    command = threading.Event()
+    # Queue for commands
+    queue = queue.Queue()
     
-    userInterfaceThread = UserInterfaceThread(stopper, command)
-    sonosInterfaceThread = SonosInterfaceThread(stopper, command)
+    
+    userInterfaceThread = UserInterfaceThread(stopper, queue)
+    sonosInterfaceThread = SonosInterfaceThread(stopper, queue)
 
     
     logging.debug("Starting userInterfaceThread thread")
@@ -69,7 +76,7 @@ if __name__ == '__main__':
     # Logging
     logging.basicConfig(filename='charliebert.log', 
                         level=logging.DEBUG, 
-                        format='%(asctime)s %(levelname)s:%(message)s', 
+                        format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
                         datefmt='%Y-%m-%d %H:%M:%S')
         
     logging.info("Starting charliebert")             

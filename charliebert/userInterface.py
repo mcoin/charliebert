@@ -31,8 +31,8 @@ class UserInterface:
         # Break the main loop if marked True
         self.stopRequested = False
         
-        # Event to trigger an action from the server
-        self.command = None
+        # Event queue to trigger actions from the server
+        self.queue = None
     
     def initSwitches(self):
         # Switches: {Port, Name}
@@ -183,18 +183,18 @@ class UserInterface:
         elif self.switches[channel] == self.modeSwitch:
             self.activateMode()
             
-        if self.command is not None:
+        if self.queue is not None:
             try:
-                self.command.set()
+                self.queue.put("Switch {} pressed, alt. mode {}".format(self.switches[channel], "ON" if self.isAltModeOn() else "OFF"))
             except:
                 pass
         
     
-    def run(self, stopper=None, command=None):         
+    def run(self, stopper=None, queue=None):         
         try:
             logging.info("Starting main loop")  
             print("Reacting to interrupts from switches")
-            self.command = command
+            self.queue = queue
               
             while True:
                 sleep(0.1)  # sleep 100 msec       
@@ -215,9 +215,9 @@ class UserInterface:
                         self.volume = 100
                     logging.debug("New volume: {:d}".format(self.volume))
                     print("self.newCounter: {:d}; self.volume = {:d}".format(self.newCounter, self.volume))  # some test print
-                    if self.command is not None:
+                    if self.queue is not None:
                         try:
-                            self.command.set()
+                            self.queue.put("Change volume to {:d}".format(self.volume))
                         except:
                             pass
 
