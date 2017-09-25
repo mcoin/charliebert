@@ -35,23 +35,38 @@ class UserInterface:
         self.queue = None
     
     def initSwitches(self):
+        # Switch numbers: {Port, Switch number}
+        self.switchNbs = { 
+                    14: 1,
+                    15: 4,
+                    18: 7,
+                    23: 10,
+                    24: 2,
+                    25: 5,
+                    8: 8,
+                    7: 11,
+                    12: 3,
+                    16: 6,
+                    20: 9,
+                    21: 12
+                    }       
         # Switches: {Port, Name}
         self.switches = { 
-                    14: "Switch 1",
-                    15: "Switch 4",
-                    18: "Switch 7",
-                    23: "Switch 10",
-                    24: "Switch 2",
-                    25: "Switch 5",
-                    8: "Switch 8",
-                    7: "Switch 11",
-                    12: "Switch 3",
-                    16: "Switch 6",
-                    20: "Switch 9",
-                    21: "Switch 12",
-                    5: "Play/Pause",
+                    14: "Switch {:d}".format(self.switchNbs[14]),
+                    15: "Switch {:d}".format(self.switchNbs[15]),
+                    18: "Switch {:d}".format(self.switchNbs[18]),
+                    23: "Switch {:d}".format(self.switchNbs[23]),
+                    24: "Switch {:d}".format(self.switchNbs[24]),
+                    25: "Switch {:d}".format(self.switchNbs[25]),
+                    8:  "Switch {:d}".format(self.switchNbs[8]),
+                    7:  "Switch {:d}".format(self.switchNbs[7]),
+                    12: "Switch {:d}".format(self.switchNbs[12]),
+                    16: "Switch {:d}".format(self.switchNbs[16]),
+                    20: "Switch {:d}".format(self.switchNbs[20]),
+                    21: "Switch {:d}".format(self.switchNbs[21]),
+                    5:  "Play/Pause",
                     11: "Forward",
-                    9: "Back",
+                    9:  "Back",
                     17: "Bank",
                     27: "Mode"
                     }
@@ -59,9 +74,15 @@ class UserInterface:
         self.bankSwitch = "Bank" # Switch to a different playlist bank
         self.modeSwitch = "Mode" # Hold down to activate alternate mode
         self.modePort = 0 # Port for the mode switch
+        self.playSwitch = "Play/Pause" # Switch to stop/resume playback
+        self.forwardSwitch = "Forward" # Switch to skip forward
+        self.backSwitch = "Back" # Switch to skip backward
         # Checks (Bank and Mode switch must be defined)
         assert(self.bankSwitch in self.switches.values())
         assert(self.modeSwitch in self.switches.values())
+        assert(self.playSwitch in self.switches.values())
+        assert(self.forwardSwitch in self.switches.values())
+        assert(self.backSwitch in self.switches.values())
         # Indicate whether alternate mode is on (upon holding down the Mode button)
         self.altMode = False
         # Set ports as input with pull-up resistor
@@ -71,9 +92,16 @@ class UserInterface:
             if name == self.modeSwitch:
                 self.modePort = s
         # Define callbacks for switch presses
-        for s in self.switches:
-            GPIO.add_event_detect(s, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=300)  
-
+        for port, name in self.switches.items():
+            if name == self.bankSwitch:
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackBankSwitch, bouncetime=300)
+            elif name == self.modeSwitch:
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackModeSwitch, bouncetime=300)
+            elif port in self.switchNbs:
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=300)  
+            else:
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackControlSwitch, bouncetime=300)
+                
     def initLeds(self):
         # LEDs for the different playlist banks: Ports and names
         self.ledPorts = [6, 19, 13, 26]
@@ -142,7 +170,24 @@ class UserInterface:
                 self.rotaryCounter -= 1  # increase or decrease counter
             self.rotaryLock.release()  # and release lock
 
-
+    def processRotary(self):
+        self.rotaryLock.acquire()  # get lock for rotary switch
+        self.newCounter = self.rotaryCounter  # get counter value
+        self.rotaryCounter = 0  # RESET IT TO 0
+        self.rotaryLock.release()  # and release lock
+                
+        if self.newCounter != 0:  # Counter has CHANGED
+            volumeDelta = self.newCounter * abs(self.newCounter)  # Decrease or increase volume 
+            self.volume += volumeDelta
+            
+            logging.debug("Volume change: {:d} (current volume: {:d})".format(volumeDelta, self.volume))
+            print("Volume change: {:d}; newCounter: {:d}; volume = {:d}".format(volumeDelta, self.newCounter, self.volume))  # some test print
+            if self.queue is not None:
+                try:
+                    self.queue.put("VOLUME {:d}".format(volumeDelta))
+                except:
+                    pass
+                        
     # Increment active bank (cycle through leds)
     def incrementBank(self, reverseOrder=False):    
         activeLeds = 0
@@ -158,6 +203,19 @@ class UserInterface:
         for l in self.ledPorts:
             GPIO.output(l, ledStates[self.ledPorts.index(l)])
     
+    def getBank(self):
+        # Return the currently active bank (A, B, C, ...)
+        for l in self.ledPorts:
+            if GPIO.input(l) == GPIO.HIGH:
+                return chr(65 + ledPorts.index(l))
+        
+        # Default: Bank A
+        return 'A'
+    
+    def getSwitch(self, channel):
+        # Return the number corresponding to the given channel (e.g. 'Switch 4' -> 4)
+        return self.switchNbs[channel]
+            
     # Mode switch
     def activateMode(self):
         self.altMode = True
@@ -170,7 +228,7 @@ class UserInterface:
     def isAltModeOff(self):
         return not self.isAltModeOn()
     
-    # Callback for switches 
+    # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
         logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
                                                                                channel, 
@@ -178,18 +236,51 @@ class UserInterface:
         print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF"))
-        if self.switches[channel] == self.bankSwitch:
-            self.incrementBank(self.isAltModeOn())
-        elif self.switches[channel] == self.modeSwitch:
-            self.activateMode()
-            
+
         if self.queue is not None:
             try:
-                self.queue.put("Switch {} pressed, alt. mode {}".format(self.switches[channel], "ON" if self.isAltModeOn() else "OFF"))
+                if self.isAltModeOn():
+                    self.queue.put("TRACK {:d}".format(self.getSwitchNb(channel)))
+                else:
+                    self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitchNb(channel)))
             except:
                 pass
         
-    
+    # Callback for bank switch 
+    def callbackBankSwitch(self, channel):
+        logging.debug("Bank switch pressed (channel {:d}, alt. mode: {})".format(channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Bank switch, alt. mode: {}]".format(channel, 
+                                                                                    "ON" if self.isAltModeOn() else "OFF"))
+        self.incrementBank(self.isAltModeOn())
+        
+    # Callback for mode switch
+    def callbackModeSwitch(self, channel):
+        logging.debug("Mode switch pressed (channel {:d})".format(channel))
+        print("Edge detected on channel {:d} [Mode switch]".format(channel))
+        
+        self.activateMode()
+        
+     # Callback for switches (play/pause, skip forward/backward)
+    def callbackControlSwitch(self, channel):
+        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
+                                                                               channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
+                                                                                    self.switches[channel], 
+                                                                                    "ON" if self.isAltModeOn() else "OFF"))
+
+        if self.queue is not None:
+            try:
+                if self.switches[channel] == self.playSwitch:
+                    self.queue.put("PLAY/PAUSE")
+                elif self.switches[channel] == self.forwardSwitch:
+                    self.queue.put("FORWARD")
+                elif self.switches[channel] == self.backSwitch:
+                    self.queue.put("BACK")
+            except:
+                pass   
+                    
     def run(self, stopper=None, queue=None):         
         try:
             logging.info("Starting main loop")  
@@ -202,24 +293,7 @@ class UserInterface:
                                                     # changes value until we get them
                                                     # and reset them
                                                     
-                self.rotaryLock.acquire()  # get lock for rotary switch
-                self.newCounter = self.rotaryCounter  # get counter value
-                self.rotaryCounter = 0  # RESET IT TO 0
-                self.rotaryLock.release()  # and release lock
-                        
-                if self.newCounter != 0:  # Counter has CHANGED
-                    self.volume = self.volume + self.newCounter * abs(self.newCounter)  # Decrease or increase volume 
-                    if self.volume < 0:  # limit volume to 0...100
-                        self.volume = 0
-                    if self.volume > 100:  # limit volume to 0...100
-                        self.volume = 100
-                    logging.debug("New volume: {:d}".format(self.volume))
-                    print("self.newCounter: {:d}; self.volume = {:d}".format(self.newCounter, self.volume))  # some test print
-                    if self.queue is not None:
-                        try:
-                            self.queue.put("Change volume to {:d}".format(self.volume))
-                        except:
-                            pass
+                self.processRotary()
 
                 if self.stopRequested:
                     logging.debug("Requesting stop")
