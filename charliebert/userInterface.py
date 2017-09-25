@@ -207,7 +207,7 @@ class UserInterface:
         # Return the currently active bank (A, B, C, ...)
         for l in self.ledPorts:
             if GPIO.input(l) == GPIO.HIGH:
-                return chr(65 + ledPorts.index(l))
+                return chr(65 + self.ledPorts.index(l))
         
         # Default: Bank A
         return 'A'
@@ -240,9 +240,9 @@ class UserInterface:
         if self.queue is not None:
             try:
                 if self.isAltModeOn():
-                    self.queue.put("TRACK {:d}".format(self.getSwitchNb(channel)))
+                    self.queue.put("TRACK {:d}".format(self.getSwitch(channel)))
                 else:
-                    self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitchNb(channel)))
+                    self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
                 pass
         
