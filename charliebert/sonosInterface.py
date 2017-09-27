@@ -10,6 +10,9 @@ class SonosInterface():
         self.speakers = {}
         self.names = []
         
+        # Currently selected Sonos speaker
+        self.speaker = None
+        
         self.connected = False
         
         # Index of the first track of the current playlist in the queue 
@@ -48,23 +51,40 @@ class SonosInterface():
 
         for name, speaker in self.speakers.items():
             print("Speaker: {}".format(name))
-            
-    def startPlaylist(self, playlistName, room):
+    
+    def prepareRoom(self, room):
         try:
             self.connect()
         except:
             logging.error("Problem establishing connection to the Sonos system")
-            return
+            return False
         
         if room not in self.names:
             logging.error("Room '{}' not available in the Sonos system".format(room))
-            return
+            return False
         
+        return True
+                        
+    def getSpeaker(self, room):
         try:
+            # Try to access the stored object
+            if self.speaker.get_speaker_info()['zone_name'] == room:
+                # All good, the currently active speaker's name corresponds to our parameter
+                return self.speaker 
+        except:
+            if self.prepareRoom(room) is False:
+                logging.error("Cannot prepare room {}".format(room))
+                return None
+            
+            # There was a problem: Redefine the speaker
             sp = self.speakers[room]
-            #playlists = sp.get_sonos_playlists()
-            ##sp.clear_queue()
-            #playlist = filter(lambda x: x.title == playlistName, playlists)[0]
+            
+            return sp
+
+    def startPlaylist(self, playlistName, room):
+        try:
+            sp = self.getSpeaker(room)
+            
             if playlistName == self.playlistName:
                 # Starting the same playlist again: Just start playing from the beginning again
                 # without appending the tracks to the queue once more
@@ -93,19 +113,9 @@ class SonosInterface():
         if trackIndex >= self.queueSize:
             logging.error("Track number {:d} too large (index: {:d}, playlist size: {:d})".format(trackNb, trackIndex, self.playlistSize))
             return
-
-        try:
-            self.connect()
-        except:
-            logging.error("Problem establishing connection to the Sonos system")
-            return
-        
-        if room not in self.names:
-            logging.error("Room '{}' not available in the Sonos system".format(room))
-            return
         
         try:
-            sp = self.speakers[room]
+            sp = self.getSpeaker(room)
             sp.play_from_queue(trackIndex)
         except:
             logging.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
@@ -123,6 +133,10 @@ if __name__ == '__main__':
     si = SonosInterface()
     try:
         si.printSpeakerList()
+        si.startPlaylist("zCharliebert_A02", "Office")
+        sleep(5)
+        si.playTrackNb(3, "Office")
+        sleep(5)
         si.startPlaylist("zCharliebert_A02", "Office")
         sleep(5)
         si.playTrackNb(3, "Office")
