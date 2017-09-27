@@ -121,6 +121,18 @@ class SonosInterface():
             logging.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
             return    
 
+    def togglePlayPause(self, room):
+        try:
+            currentState = None
+            sp = self.getSpeaker(room)
+            currentState = sp.get_current_transport_info()[u'current_transport_state']
+            if currentState == 'PLAYING':
+                sp.pause()
+            else:
+                sp.play()
+        except:
+            logging.error("Problem toggling play/pause (current state: {})".format(currentState))
+            return          
 
 if __name__ == '__main__':
     # Logging
@@ -133,13 +145,17 @@ if __name__ == '__main__':
     si = SonosInterface()
     try:
         si.printSpeakerList()
-        si.startPlaylist("zCharliebert_A02", "Office")
+        si.startPlaylist("zCharliebert_A01", "Office")
         sleep(5)
         si.playTrackNb(3, "Office")
+        #sleep(5)
+        #si.startPlaylist("zCharliebert_A01", "Office")
+        #sleep(5)
+        #si.playTrackNb(3, "Office")
         sleep(5)
-        si.startPlaylist("zCharliebert_A02", "Office")
+        si.togglePlayPause("Office")
         sleep(5)
-        si.playTrackNb(3, "Office")
+        si.togglePlayPause("Office")
     except KeyboardInterrupt:
         logging.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
