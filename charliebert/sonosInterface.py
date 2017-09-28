@@ -132,8 +132,33 @@ class SonosInterface():
                 sp.play()
         except:
             logging.error("Problem toggling play/pause (current state: {})".format(currentState))
-            return          
 
+    def skipToNext(self, room):
+        try:
+            sp = self.getSpeaker(room)
+            sp.next()
+        except:
+            logging.error("Problem skipping to next song")
+          
+    def skipToPrevious(self, room):
+        try:
+            sp = self.getSpeaker(room)
+            sp.previous()
+        except:
+            logging.error("Problem skipping to previous song")
+          
+    def adjustVolume(self, volumeDelta, room):
+        try:
+            oldVol = None
+            volumeDelta = int(round(volumeDelta))
+            sp = self.getSpeaker(room)
+            oldVol = sp.volume
+            sp.volume += volumeDelta
+            newVol = sp.volume
+        except:
+            logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
+
+            
 if __name__ == '__main__':
     # Logging
     logging.basicConfig(filename='sonosInterface.log', 
@@ -152,10 +177,26 @@ if __name__ == '__main__':
         #si.startPlaylist("zCharliebert_A01", "Office")
         #sleep(5)
         #si.playTrackNb(3, "Office")
+        #sleep(5)
+        #si.togglePlayPause("Office")
+        #sleep(5)
+        #si.togglePlayPause("Office")
+#         sleep(5)
+#         si.skipToNext("Office")
+#         sleep(5)
+#         si.skipToNext("Office")
+#         sleep(5)
+#         si.skipToPrevious("Office")
+#         sleep(5)
+#         si.skipToPrevious("Office")
         sleep(5)
-        si.togglePlayPause("Office")
+        si.adjustVolume(10, "Office")
         sleep(5)
-        si.togglePlayPause("Office")
+        si.adjustVolume(10, "Office")
+        sleep(5)
+        si.adjustVolume(-10, "Office")
+        sleep(5)
+        si.adjustVolume(-10, "Office")
     except KeyboardInterrupt:
         logging.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
