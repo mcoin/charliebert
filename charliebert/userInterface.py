@@ -328,20 +328,21 @@ class UserInterface:
                     self.queue.put("PLAY/PAUSE")
                 elif self.switches[channel] == self.forwardSwitch:
                     self.queue.put("FORWARD")
-                elif self.switches[channel] == self.backSwitch:
-                    if self.isAltModeOff():
-                        self.queue.put("BACK")
-                    else:
-                        # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
-                        self.initiateSwitchOff()
+                elif self.switches[channel] == self.backSwitch and self.isAltModeOff():
+                    self.queue.put("BACK")
             except:
                 pass
+
+        if self.switches[channel] == self.backSwitch and self.isAltModeOn():
+            # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
+            self.initiateSwitchOff()
             
         self.resetShutdownTimer()
         self.incrementNbOperations()
 
     # Start procedure to switch off the pi under certain conditions
     def initiateSwitchOff(self):
+        logging.debug("Initiating switch off (Key combination Mode + Back)") 
         # Take into account a second call before the first switch off procedure has completed
         try:
             if self.switchOffTimer.is_alive():
@@ -349,22 +350,29 @@ class UserInterface:
         except:
             pass
         
-        # Timer to trigger switch off after a given time in case the key combination is continuously pressed
-        self.switchOffTimePeriod = 3 # s
-        self.switchOffTimer = threading.Timer(self.switchOffTimePeriod, self.completeSwitchOff)
-        self.switchOffTimer.setName("SwitchOffTimer")
-        self.switchOffTimer.start()
-        self.switchOffCurrentNbOperations = self.nbOperations
+        try:
+            # Timer to trigger switch off after a given time in case the key combination is continuously pressed
+            self.switchOffTimePeriod = 3 # s
+            self.switchOffTimer = threading.Timer(self.switchOffTimePeriod, self.completeSwitchOff)
+            self.switchOffTimer.setName("SwitchOffTimer")
+            self.switchOffTimer.start()
+            self.switchOffCurrentNbOperations = self.nbOperations
+        except:
+            logging.error("Problem initiating switch off")
         
     # If the conditions are fulfilled, switch off the pi
     def completeSwitchOff(self):
+        logging.debug("Attempting to complete switch off (Key combination Mode + Back)") 
+
         # Make sure the number of operations has not changed since initiating the switch off procedure
         if self.nbOperations != self.switchOffCurrentNbOperations + 1 \
         and self.nbOperations != 1: # Case where self.nbOperations has been reset
+            logging.debug("Canceling switch off (Key combination Mode + Back): Other keys have been pressed in the meantime") 
             return
         
         # Make sure the key combination is still being pressed
         if GPIO.input(self.modePort) != GPIO.LOW or GPIO.input(self.backPort) != GPIO.LOW:
+            logging.debug("Canceling switch off (Key combination Mode + Back): Key combination no longer pressed") 
             return
         
         # All the conditions are fulfilled: Send switch off signal
@@ -411,9 +419,20 @@ class UserInterface:
             # clean up GPIO on exit  
             logging.debug("Cleaning up GPIO")
             GPIO.cleanup()
-            logging.debug("Canceling shutdown timer")
-            self.shutdownTimer.join()
+#            logging.debug("Canceling shutdown timer")
+#            try:
+#                self.shutdownTimer.join()
+#            except:
+#                pass
+#            logging.debug("Canceling switch off timer")
+#            try:
+#                self.switchOffTimer.join()
+#            except:
+#                pass
+            logging.debug("Over.")
             
+        logging.debug("Bye!")
+
     def requestStop(self):
         self.stopRequested = True
 
