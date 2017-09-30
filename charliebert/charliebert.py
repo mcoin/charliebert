@@ -122,15 +122,19 @@ def charliebert():
     logging.debug("Starting sonosInterfaceThread thread")
     sonosInterfaceThread.start()
 
-    # Environment variable acting as a switch for this application:
-    os.environ['CHARLIEBERT_SWITCH'] = '1'
+    # File acting as a switch for this application:
+    switchFile = "CHARLIEBERT_STOP"
+    if os.path.exists(switchFile):
+        os.remove(switchFile)
     
     try:
-        while os.environ['CHARLIEBERT_SWITCH'] == '1':
+        while not os.path.exists(switchFile):
             pass
         
-        if os.environ['CHARLIEBERT_SWITCH'] != '1':
-            logging.debug("Stop requested using the environment variable 'CHARLIEBERT_SWITCH'")
+        if os.path.exists(switchFile):
+            logging.debug("Stop requested using the flag file '{}'".format(switchFile))
+            os.remove(switchFile)
+
            
     except KeyboardInterrupt:
         logging.debug("Stop requested")
