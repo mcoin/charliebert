@@ -3,6 +3,7 @@ import threading
 import Queue
 import logging
 import re
+import os
 from userInterface import UserInterface
 from sonosInterface import SonosInterface
 
@@ -121,13 +122,22 @@ def charliebert():
     logging.debug("Starting sonosInterfaceThread thread")
     sonosInterfaceThread.start()
 
+    # Environment variable acting as a switch for this application:
+    os.environ['CHARLIEBERT_SWITCH'] = '1'
+    
     try:
-        while True:
+        while os.environ['CHARLIEBERT_SWITCH'] == '1':
             pass
+        
+        if os.environ['CHARLIEBERT_SWITCH'] != '1':
+            logging.debug("Stop requested using the environment variable 'CHARLIEBERT_SWITCH'")
+           
     except KeyboardInterrupt:
         logging.debug("Stop requested")
-        stopper.set()
-	while not queue.empty():
+    
+    finally:
+        stopper.set() 
+        while not queue.empty():
             queue.get()
         queue.put(None)
             
