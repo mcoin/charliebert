@@ -251,9 +251,12 @@ class UserInterface:
             # Cancel current timer
             self.shutdownTimer.cancel()
             # Restart timer to monitor inactivity after the last key press
+            self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
+            self.shutdownTimer.setName("ShutdownTimer")
             self.shutdownTimer.start()
         except:
             logging.error("Problem encountered when trying to reset the shutdown timer")
+
         
     # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
