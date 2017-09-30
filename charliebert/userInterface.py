@@ -35,9 +35,12 @@ class UserInterface:
         self.queue = None
         
         # Timer to trigger a shutdown after a given period of inactivity
-        self.shutdownTimePeriod = 10 # s
+        self.shutdownTimePeriod = 1800 # s
         self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
         self.shutdownTimer.setName("ShutdownTimer")
+        
+        # Number of operations (key presses): Incremented after each key press
+        self.nbOperations = 0
     
     def initSwitches(self):
         # Switch numbers: {Port, Switch number}
@@ -82,6 +85,7 @@ class UserInterface:
         self.playSwitch = "Play/Pause" # Switch to stop/resume playback
         self.forwardSwitch = "Forward" # Switch to skip forward
         self.backSwitch = "Back" # Switch to skip backward
+        self.backPort = 0 # Port for the back switch
         # Checks (Bank and Mode switch must be defined)
         assert(self.bankSwitch in self.switches.values())
         assert(self.modeSwitch in self.switches.values())
@@ -96,6 +100,8 @@ class UserInterface:
             # Mark port for the Mode switch
             if name == self.modeSwitch:
                 self.modePort = s
+            elif name == self.backSwitch:
+                self.backPort = s                
         # Define callbacks for switch presses
         for port, name in self.switches.items():
             if name == self.bankSwitch:
@@ -194,7 +200,14 @@ class UserInterface:
                     pass
                 
             self.resetShutdownTimer()
+            self.incrementNbOperations()
                         
+    def incrementNbOperations(self):
+        self.nbOperations += 1
+        # Make sure the value does not grow too big
+        if self.nbOperations > 100000:
+            self.nbOperations = 0
+        
     # Increment active bank (cycle through leds)
     def incrementBank(self, reverseOrder=False):    
         activeLeds = 0
@@ -277,6 +290,7 @@ class UserInterface:
                 pass
             
         self.resetShutdownTimer()
+        self.incrementNbOperations()
         
     # Callback for bank switch 
     def callbackBankSwitch(self, channel):
@@ -287,6 +301,7 @@ class UserInterface:
         self.incrementBank(self.isAltModeOn())
         
         self.resetShutdownTimer()
+        self.incrementNbOperations()
         
     # Callback for mode switch
     def callbackModeSwitch(self, channel):
@@ -296,6 +311,7 @@ class UserInterface:
         self.activateMode()
         
         self.resetShutdownTimer()
+        self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
     def callbackControlSwitch(self, channel):
@@ -313,12 +329,53 @@ class UserInterface:
                 elif self.switches[channel] == self.forwardSwitch:
                     self.queue.put("FORWARD")
                 elif self.switches[channel] == self.backSwitch:
-                    self.queue.put("BACK")
+                    if self.isAltModeOff():
+                        self.queue.put("BACK")
+                    else:
+                        # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
+                        self.initiateSwitchOff()
             except:
                 pass
             
         self.resetShutdownTimer()
+        self.incrementNbOperations()
 
+    # Start procedure to switch off the pi under certain conditions
+    def initiateSwitchOff(self):
+        # Take into account a second call before the first switch off procedure has completed
+        try:
+            if self.switchOffTimer.is_alive():
+                self.switchOffTimer.cancel()
+        except:
+            pass
+        
+        # Timer to trigger switch off after a given time in case the key combination is continuously pressed
+        self.switchOffTimePeriod = 3 # s
+        self.switchOffTimer = threading.Timer(self.switchOffTimePeriod, self.completeSwitchOff)
+        self.switchOffTimer.setName("SwitchOffTimer")
+        self.switchOffTimer.start()
+        self.switchOffCurrentNbOperations = self.nbOperations
+        
+    # If the conditions are fulfilled, switch off the pi
+    def completeSwitchOff(self):
+        # Make sure the number of operations has not changed since initiating the switch off procedure
+        if self.nbOperations != self.switchOffCurrentNbOperations + 1 \
+        and self.nbOperations != 1: # Case where self.nbOperations has been reset
+            return
+        
+        # Make sure the key combination is still being pressed
+        if GPIO.input(self.modePort) != GPIO.LOW or GPIO.input(self.backPort) != GPIO.LOW:
+            return
+        
+        # All the conditions are fulfilled: Send switch off signal
+        logging.debug("Mode and Back pressed for {} seconds: Sending signal to shut down the pi".format(self.switchOffTimePeriod))
+
+        if self.queue is not None:
+            try:
+                self.queue.put("SHUTDOWN")
+            except:
+                pass
+            
                     
     def run(self, stopper=None, queue=None):         
         try:
