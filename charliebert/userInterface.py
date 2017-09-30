@@ -33,6 +33,11 @@ class UserInterface:
         
         # Event queue to trigger actions from the server
         self.queue = None
+        
+        # Timer to trigger a shutdown after a given period of inactivity
+        self.shutdownTimePeriod = 10 # s
+        self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
+        self.shutdownTimer.setName("ShutdownTimer")
     
     def initSwitches(self):
         # Switch numbers: {Port, Switch number}
@@ -187,6 +192,8 @@ class UserInterface:
                     self.queue.put("VOLUME {:d}".format(volumeDelta))
                 except:
                     pass
+                
+            self.resetShutdownTimer()
                         
     # Increment active bank (cycle through leds)
     def incrementBank(self, reverseOrder=False):    
@@ -228,6 +235,26 @@ class UserInterface:
     def isAltModeOff(self):
         return not self.isAltModeOn()
     
+    # Function that sends a shutdown command after a period of inactivity
+    def sendShutdownSignal(self):
+        logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
+
+        if self.queue is not None:
+            try:
+                self.queue.put("SHUTDOWN")
+            except:
+                pass
+            
+    # Reset the shutdown timer with each new key press
+    def resetShutdownTimer(self):
+        try:
+            # Cancel current timer
+            self.shutdownTimer.cancel()
+            # Restart timer to monitor inactivity after the last key press
+            self.shutdownTimer.start()
+        except:
+            logging.error("Problem encountered when trying to reset the shutdown timer")
+        
     # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
         logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
@@ -245,6 +272,8 @@ class UserInterface:
                     self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
                 pass
+            
+        self.resetShutdownTimer()
         
     # Callback for bank switch 
     def callbackBankSwitch(self, channel):
@@ -254,12 +283,16 @@ class UserInterface:
                                                                                     "ON" if self.isAltModeOn() else "OFF"))
         self.incrementBank(self.isAltModeOn())
         
+        self.resetShutdownTimer()
+        
     # Callback for mode switch
     def callbackModeSwitch(self, channel):
         logging.debug("Mode switch pressed (channel {:d})".format(channel))
         print("Edge detected on channel {:d} [Mode switch]".format(channel))
         
         self.activateMode()
+        
+        self.resetShutdownTimer()
         
      # Callback for switches (play/pause, skip forward/backward)
     def callbackControlSwitch(self, channel):
@@ -279,13 +312,18 @@ class UserInterface:
                 elif self.switches[channel] == self.backSwitch:
                     self.queue.put("BACK")
             except:
-                pass   
+                pass
+            
+        self.resetShutdownTimer()
+
                     
     def run(self, stopper=None, queue=None):         
         try:
             logging.info("Starting main loop")  
             print("Reacting to interrupts from switches")
             self.queue = queue
+            logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
+            self.shutdownTimer.start()
               
             while True:
                 sleep(0.1)  # sleep 100 msec       
@@ -311,9 +349,11 @@ class UserInterface:
             print("Stop (Ctrl-C)")
         finally:
             # clean up GPIO on exit  
-            logging.debug("Cleaning up GPIO") 
+            logging.debug("Cleaning up GPIO")
             GPIO.cleanup()
-
+            logging.debug("Canceling shutdown timer")
+            self.shutdownTimer.join()
+            
     def requestStop(self):
         self.stopRequested = True
 
