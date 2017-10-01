@@ -43,33 +43,6 @@ class SonosInterfaceThread(threading.Thread):
                 logging.debug("Sonos Interface: Obtained command {}".format(command))
                 self.queue.task_done()
 
-#                 # Process commands
-#                 if re.search("^PLAY/PAUSE$", command):
-#                     logging.debug("Command PLAY/PAUSE")
-#                     self.si.togglePlayPause(self.room)
-#                 elif re.search("^FORWARD$", command):
-#                     logging.debug("Command FORWARD")
-#                     self.si.skipToNext(self.room)
-#                 elif re.search("^BACK$", command):
-#                     logging.debug("Command BACK")
-#                     self.si.skipToPrevious(self.room)
-#                 elif re.search("^PLAYLIST\s+([A-Z])\s+([0-9]+)\s*$", command):
-#                     m = re.search("^PLAYLIST\s+([A-Z])\s+([0-9]+)\s*$", command)
-#                     logging.debug("Command PLAYLIST: {} {:d}".format(m.group(1), int(m.group(2))))
-#                     playlistName = "{0}_{1}{2:02d}".format(self.playlistBasename, m.group(1), int(m.group(2)))
-#                     logging.debug("Starting playlist {}".format(playlistName))
-#                     self.si.startPlaylist(playlistName, self.room)
-#                 elif re.search("^TRACK\s+([0-9]+)\s*$", command):
-#                     m = re.search("^TRACK\s+([0-9]+)\s*$", command)
-#                     logging.debug("Command TRACK: {:d}".format(int(m.group(1))))
-#                     self.si.playTrackNb(m.group(1), self.room)
-#                 elif re.search("^VOLUME\s+(-[0-9]+)\s*$", command):
-#                     m = re.search("^VOLUME\s+([-0-9]+)\s*$", command)
-#                     logging.debug("Command VOLUME: {:d}".format(int(m.group(1))))
-#                     self.si.adjustVolume(int(m.group(1)), self.room)
-#                 else:
-#                     logging.error("Unrecognized command: '{}'".format(command))
-
                 # Process commands using the following mini-parser: 'CMD [BANK] [VALUE]'
                 m = self.parser.match(command)
                 try:
@@ -97,6 +70,11 @@ class SonosInterfaceThread(threading.Thread):
                         volDelta = int(m.group(5))
                         logging.debug("Command VOLUME: {:d}".format(volDelta))
                         self.si.adjustVolume(volDelta, self.room)
+                    elif m.group(1) == "SHUTDOWN":
+                        logging.debug("Command SHUTDOWN")
+                        # Hack to work around the need for a password when using sudo:
+                        # sudo chmod u+s /sbin/shutdown
+                        os.system("/sbin/shutdown -h now")
                     else:
                        raise 
                 except:
