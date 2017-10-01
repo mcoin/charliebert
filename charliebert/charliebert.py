@@ -130,6 +130,7 @@ if __name__ == '__main__':
                         level=logging.DEBUG, 
                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
                         datefmt='%Y-%m-%d %H:%M:%S')
+    logging.getLogger("soco").setLevel(logging.WARNING)
         
     logging.info("Starting charliebert")             
     charliebert()
