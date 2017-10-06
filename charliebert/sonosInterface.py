@@ -30,6 +30,7 @@ class SonosInterface():
         self.maxVolume = 60 # ...but not painful
         self.minTimePlaylist = 5 # (seconds) Time before starting another playlist is allowed
         self.timeLastStartPlaylist = time.time() - self.minTimePlaylist # Make sure we can start a playlist right away
+        self.cancelOffsetStartPlaylist = False # True if the playlist has been stopped before the end of the offset time
         
     def connect(self): 
         # Prepare info about Sonos speakers
@@ -95,11 +96,12 @@ class SonosInterface():
             return True
         
         self.timeLastStartPlaylist = currentTime
+        self.cancelOffsetStartPlaylist = False
         return False
         
     def startPlaylist(self, playlistName, room):
         # Discard commands that are issued too briefly after the last
-        if self.offsetStartPlaylist(playlistName):
+        if self.offsetStartPlaylist(playlistName) and not self.cancelOffsetStartPlaylist:
             return
         
         try:
@@ -157,6 +159,7 @@ class SonosInterface():
             
             if currentState == 'PLAYING':
                 sp.pause()
+                self.cancelOffsetStartPlaylist = True
             else:
                 sp.play()
         except:
@@ -170,6 +173,7 @@ class SonosInterface():
             self.soundCheck()
             
             sp.next()
+            self.cancelOffsetStartPlaylist = True
         except:
             logging.error("Problem skipping to next song")
           
@@ -181,6 +185,7 @@ class SonosInterface():
             self.soundCheck()
             
             sp.previous()
+            self.cancelOffsetStartPlaylist = True
         except:
             logging.error("Problem skipping to previous song")
           
