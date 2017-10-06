@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 from collections import deque
 import threading
 from time import sleep
+import time
 import logging
 from distutils.cmd import Command
     
@@ -101,7 +102,7 @@ class UserInterface:
         # Indicate whether alternate mode is on (upon holding down the Mode button)
         self.altMode = False
         # Indicate whether alternate mode 2 (shift) is on (upon holding down the Mode & Play buttons)
-        self.shifttMode = False
+        self.shiftMode = False
         # Set ports as input with pull-up resistor
         for s, name in self.switches.items():
             GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -129,14 +130,11 @@ class UserInterface:
         self.ledStates = deque()
         # Checks (the lists have to have the same number of elements)
         assert(len(self.ledPorts) == len(self.ledNames))
-        assert(len(ledStates) == len(self.ledNames))
         # LEDs: {Port, Name}
         leds = dict(zip(self.ledPorts, self.ledNames))
         # Name of the LED which is ON by default at startup
         defaultLed = "Bank A"
         assert(defaultLed in self.ledNames)
-        self.activeLed = self.ledPorts[self.ledNames.index(defaultLed)]
-        self.activeLedName = leds[activeLed]
         # Set the corresponding ports as output with state HIGH for the 1st one
         for l, name in leds.items():
             GPIO.setup(l, GPIO.OUT)
@@ -313,11 +311,13 @@ class UserInterface:
                     self.queue.put("TRACK {:d}".format(self.getSwitch(channel)))
                 elif self.isShiftModeOn():
                     self.queue.put("ROOM {:d}".format(self.getSwitch(channel)))
-                    self.deactivateShiftMode()
                 else:
                     self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
                 pass
+
+	if self.isShiftModeOn():
+	    self.deactivateShiftMode()
             
         self.resetShutdownTimer()
         self.incrementNbOperations()
@@ -332,6 +332,8 @@ class UserInterface:
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
         if not self.isShiftModeOn():
             self.incrementBank(self.isAltModeOn())
+        else:
+	    self.deactivateShiftMode()
         
         self.resetShutdownTimer()
         self.incrementNbOperations()
@@ -357,20 +359,20 @@ class UserInterface:
                                                                                     "ON" if self.isAltModeOn() else "OFF",
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
 
-        if self.queue is not None:
-            try:
-                if self.isShiftModeOn():
-                    if self.switches[channel] == self.playSwitch:
-                        self.deactivateShiftMode()
-                else:
+	if self.switches[channel] == self.playSwitch and self.isShiftModeOn():
+	    if self.switches[channel] == self.playSwitch:
+		self.deactivateShiftMode()
+	else:
+            if self.queue is not None:
+                try:
                     if self.switches[channel] == self.playSwitch and not self.isAltModeOn():
                         self.queue.put("PLAY/PAUSE")
                     elif self.switches[channel] == self.forwardSwitch:
                         self.queue.put("FORWARD")
                     elif self.switches[channel] == self.backSwitch and not self.isAltModeOn():
                         self.queue.put("BACK")
-            except:
-                pass
+                except:
+                    pass
 
         if self.switches[channel] == self.backSwitch and self.isAltModeOn():
             # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
