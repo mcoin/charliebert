@@ -26,9 +26,9 @@ class SonosInterface():
         self.queueSize = 0
         
         # Limitations
-        self.minVolume = 20 # Make sure the music is audible...
-        self.maxVolume = 60 # ...but not painful
-        self.minTimePlaylist = 5 # (seconds) Time before starting another playlist is allowed
+        self.minVolume = 10 # Make sure the music is audible...
+        self.maxVolume = 50 # ...but not painful
+        self.minTimePlaylist = 10 # (seconds) Time before starting another playlist is allowed
         self.timeLastStartPlaylist = time.time() - self.minTimePlaylist # Make sure we can start a playlist right away
         self.cancelOffsetStartPlaylist = False # True if the playlist has been stopped before the end of the offset time
         
@@ -101,7 +101,7 @@ class SonosInterface():
         
     def startPlaylist(self, playlistName, room):
         # Discard commands that are issued too briefly after the last
-        if self.offsetStartPlaylist(playlistName) and not self.cancelOffsetStartPlaylist:
+        if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
             return
         
         try:
@@ -114,7 +114,7 @@ class SonosInterface():
                 return
             
             # Make sure we won't go deaf right now
-            self.soundCheck()
+            self.soundCheck(room)
             
             playlist = sp.get_sonos_playlist_by_attr('title', playlistName)
             self.playlistName = playlistName
@@ -142,7 +142,7 @@ class SonosInterface():
         try:
             sp = self.getSpeaker(room)
             # Make sure we won't go deaf right now
-            self.soundCheck()
+            self.soundCheck(room)
             sp.play_from_queue(trackIndex)
         except:
             logging.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
@@ -155,7 +155,7 @@ class SonosInterface():
             currentState = sp.get_current_transport_info()[u'current_transport_state']
             
             # Make sure we won't go deaf right now
-            self.soundCheck()
+            self.soundCheck(room)
             
             if currentState == 'PLAYING':
                 sp.pause()
@@ -170,7 +170,7 @@ class SonosInterface():
             sp = self.getSpeaker(room)
             
             # Make sure we won't go deaf right now
-            self.soundCheck()
+            self.soundCheck(room)
             
             sp.next()
             self.cancelOffsetStartPlaylist = True
@@ -182,7 +182,7 @@ class SonosInterface():
             sp = self.getSpeaker(room)
             
             # Make sure we won't go deaf right now
-            self.soundCheck()
+            self.soundCheck(room)
             
             sp.previous()
             self.cancelOffsetStartPlaylist = True
@@ -211,7 +211,9 @@ class SonosInterface():
         except:
             logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
 
-    def soundCheck(self):
+    def soundCheck(self, room):
+        vol = -1
+        newVol = -1
         try:
             sp = self.getSpeaker(room)
             vol = sp.volume
