@@ -1,6 +1,7 @@
 import soco
 import logging
 from time import sleep
+import time
 
 class SonosInterface():
     def __init__(self):
@@ -23,6 +24,12 @@ class SonosInterface():
         self.playlistName = ""
         # Size of the queue
         self.queueSize = 0
+        
+        # Limitations
+        self.minVolume = 20 # Make sure the music is audible...
+        self.maxVolume = 60 # ...but not painful
+        self.minTimePlaylist = 5 # (seconds) Time before starting another playlist is allowed
+        self.timeLastStartPlaylist = time.time() - self.minTimePlaylist # Make sure we can start a playlist right away
         
     def connect(self): 
         # Prepare info about Sonos speakers
@@ -81,7 +88,20 @@ class SonosInterface():
             
             return sp.group.coordinator
 
+    def offsetStartPlaylist(self, playlistName):
+        currentTime = time.time()
+        if currentTime - self.timeLastStartPlaylist < self.minTimePlaylist:
+            logging.debug("Discarding command to start playlist {} (issued {} after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
+            return True
+        
+        self.timeLastStartPlaylist = currentTime
+        return False
+        
     def startPlaylist(self, playlistName, room):
+        # Discard commands that are issued too briefly after the last
+        if self.offsetStartPlaylist(playlistName):
+            return
+        
         try:
             sp = self.getSpeaker(room)
             
@@ -90,6 +110,9 @@ class SonosInterface():
                 # without appending the tracks to the queue once more
                 sp.play_from_queue(self.indexBegPlaylist)
                 return
+            
+            # Make sure we won't go deaf right now
+            self.soundCheck()
             
             playlist = sp.get_sonos_playlist_by_attr('title', playlistName)
             self.playlistName = playlistName
@@ -116,6 +139,8 @@ class SonosInterface():
         
         try:
             sp = self.getSpeaker(room)
+            # Make sure we won't go deaf right now
+            self.soundCheck()
             sp.play_from_queue(trackIndex)
         except:
             logging.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
@@ -126,6 +151,10 @@ class SonosInterface():
             currentState = None
             sp = self.getSpeaker(room)
             currentState = sp.get_current_transport_info()[u'current_transport_state']
+            
+            # Make sure we won't go deaf right now
+            self.soundCheck()
+            
             if currentState == 'PLAYING':
                 sp.pause()
             else:
@@ -136,6 +165,10 @@ class SonosInterface():
     def skipToNext(self, room):
         try:
             sp = self.getSpeaker(room)
+            
+            # Make sure we won't go deaf right now
+            self.soundCheck()
+            
             sp.next()
         except:
             logging.error("Problem skipping to next song")
@@ -143,6 +176,10 @@ class SonosInterface():
     def skipToPrevious(self, room):
         try:
             sp = self.getSpeaker(room)
+            
+            # Make sure we won't go deaf right now
+            self.soundCheck()
+            
             sp.previous()
         except:
             logging.error("Problem skipping to previous song")
@@ -154,12 +191,37 @@ class SonosInterface():
             volumeDelta = int(round(volumeDelta))
             sp = self.getSpeaker(room)
             oldVol = sp.volume
-            sp.volume += volumeDelta
+            newVol = oldVol + volumeDelta
+            
+            # Enforce volume limits
+            if newVol < self.minVolume:
+                logging.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                sp.volume = self.minVolume
+            elif newVol > self.maxVolume:
+                logging.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                sp.volume = self.maxVolume
+            else:
+                sp.volume += volumeDelta
             newVol = sp.volume
         except:
             logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
 
+    def soundCheck(self):
+        try:
+            sp = self.getSpeaker(room)
+            vol = sp.volume
             
+            # Enforce volume limits
+            if vol < self.minVolume:
+                logging.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                sp.volume = self.minVolume
+            elif vol > self.maxVolume:
+                logging.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                sp.volume = self.maxVolume
+            newVol = sp.volume
+        except:
+            logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
+
 if __name__ == '__main__':
     # Logging
     logging.basicConfig(filename='sonosInterface.log', 
