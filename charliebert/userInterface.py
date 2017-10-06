@@ -139,7 +139,7 @@ class UserInterface:
         for l, name in leds.items():
             GPIO.setup(l, GPIO.OUT)
             GPIO.output(l, GPIO.HIGH if name == defaultLed else GPIO.LOW)
-            self.ledStates.append(GPIO.HIGH if name == defaultLed else GPIO.LOW)
+            self.ledStates.append(GPIO.HIGH if len(self.ledStates) == 0 else GPIO.LOW)
 
 
     def initRotaryEncoder(self):
