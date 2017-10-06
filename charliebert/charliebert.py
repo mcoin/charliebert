@@ -27,6 +27,7 @@ class SonosInterfaceThread(threading.Thread):
         self.queue = queue
         self.room = "Office"
         #self.room = "Bedroom"
+        self.network = "aantgr"
         self.playlistBasename = "zCharliebert"
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
         self.si = SonosInterface()
@@ -79,17 +80,29 @@ class SonosInterfaceThread(threading.Thread):
                         roomNb = int(m.group(5))
                         logging.debug("Command ROOM: {:d}".format(roomNb))
                         if roomNb == 1:
+                            self.changeNetwork("aantgr")
                             self.room = "Bedroom"
                         elif roomNb == 2:
+                            self.changeNetwork("aantgr")
                             self.room = "Bathroom"
-                        elif roomNb == 2:
+                        elif roomNb == 3:
+                            self.changeNetwork("aantgr")
                             self.room = "Office"  
-                        elif roomNb == 2:
+                        elif roomNb == 4:
+                            self.changeNetwork("aantgr")
                             self.room = "Kitchen"  
-                        elif roomNb == 2:
+                        elif roomNb == 5:
+                            self.changeNetwork("aantgr")
                             self.room = "Living Room"  
-                        elif roomNb == 2:
+                        elif roomNb == 6:
+                            self.changeNetwork("aantgr")
                             self.room = "Charlie's Room"                                                                                                                                    
+                        elif roomNb == 7:
+                            self.changeNetwork("AP2")
+                            self.room = "Wohnzimmer"                                                                                                                                    
+                        elif roomNb == 8:
+                            self.changeNetwork("AP2")
+                            self.room = "Obenauf"                                                                                                                                    
                         else:
                             logging.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
                     else:
@@ -101,6 +114,40 @@ class SonosInterfaceThread(threading.Thread):
             logging.debug("Sonos Interface stopped (Ctrl-C)")
         logging.debug("SonosInterfaceThread stopping")
 
+    def changeNetwork(self, network):
+        if network == self.network:
+            return
+        
+        # The config file /etc/wpa_supplicant/wpa_supplicant.conf has to look like:
+        #ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+        #update_config=1
+        #country=GB
+        #
+        #network={
+        #    ssid="aantgr"
+        #    psk="********"
+        #    key_mgmt=WPA-PSK
+        #    priority=10
+        #}
+        #network={
+        #    ssid="AP2"
+        #    psk="********"
+        #    key_mgmt=WPA-PSK
+        #    priority=1
+        #}
+
+        if network == "aantgr":
+            os.system("wpa_cli select_network 0")
+        elif network == "AP2":
+            os.system("wpa_cli select_network 1")
+        else:
+            logging.error("Unknown network '{}'".format(network))
+            return
+        
+        time.sleep(5)
+        
+        self.network = network
+        
 def charliebert():
     # State indicator
     stopper = threading.Event()
