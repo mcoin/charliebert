@@ -75,6 +75,23 @@ class SonosInterfaceThread(threading.Thread):
                         # Hack to work around the need for a password when using sudo:
                         # sudo chmod u+s /sbin/shutdown
                         os.system("/sbin/shutdown -h now")
+                    elif m.group(1) == "ROOM":
+                        roomNb = int(m.group(5))
+                        logging.debug("Command ROOM: {:d}".format(roomNb))
+                        if roomNb == 1:
+                            self.room = "Bedroom"
+                        elif roomNb == 2:
+                            self.room = "Bathroom"
+                        elif roomNb == 2:
+                            self.room = "Office"  
+                        elif roomNb == 2:
+                            self.room = "Kitchen"  
+                        elif roomNb == 2:
+                            self.room = "Living Room"  
+                        elif roomNb == 2:
+                            self.room = "Charlie's Room"                                                                                                                                    
+                        else:
+                            logging.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
                     else:
                        raise 
                 except:
