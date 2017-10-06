@@ -41,6 +41,12 @@ class UserInterface:
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
+        
+        # Indicator for shift mode: if true, blink all bank leds
+        self.blinking = False
+        # Period for blinking leds (in seconds)
+        self.blinkPeriod = 0.5
+        
     
     def initSwitches(self):
         # Switch numbers: {Port, Switch number}
@@ -94,6 +100,8 @@ class UserInterface:
         assert(self.backSwitch in self.switches.values())
         # Indicate whether alternate mode is on (upon holding down the Mode button)
         self.altMode = False
+        # Indicate whether alternate mode 2 (shift) is on (upon holding down the Mode & Play buttons)
+        self.shifttMode = False
         # Set ports as input with pull-up resistor
         for s, name in self.switches.items():
             GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -117,8 +125,8 @@ class UserInterface:
         # LEDs for the different playlist banks: Ports and names
         self.ledPorts = [6, 19, 13, 26]
         self.ledNames = ["Bank A", "Bank B", "Bank C", "Bank D"]
-        # Initial state of the bank leds (1st one ON)
-        ledStates = [GPIO.HIGH, GPIO.LOW, GPIO.LOW, GPIO.LOW]
+        # State of the bank leds
+        self.ledStates = deque()
         # Checks (the lists have to have the same number of elements)
         assert(len(self.ledPorts) == len(self.ledNames))
         assert(len(ledStates) == len(self.ledNames))
@@ -127,12 +135,14 @@ class UserInterface:
         # Name of the LED which is ON by default at startup
         defaultLed = "Bank A"
         assert(defaultLed in self.ledNames)
-        activeLed = self.ledPorts[self.ledNames.index(defaultLed)]
-        activeLedName = leds[activeLed]
+        self.activeLed = self.ledPorts[self.ledNames.index(defaultLed)]
+        self.activeLedName = leds[activeLed]
         # Set the corresponding ports as output with state HIGH for the 1st one
         for l, name in leds.items():
             GPIO.setup(l, GPIO.OUT)
             GPIO.output(l, GPIO.HIGH if name == defaultLed else GPIO.LOW)
+            self.ledStates.append(GPIO.HIGH if name == defaultLed else GPIO.LOW)
+
 
     def initRotaryEncoder(self):
         # Current volume    
@@ -209,25 +219,35 @@ class UserInterface:
             self.nbOperations = 0
         
     # Increment active bank (cycle through leds)
-    def incrementBank(self, reverseOrder=False):    
-        activeLeds = 0
+    # Cycle backwards with reverseOrder = True
+    # Only restore the currently active bank when restore = True (no increment)
+    def incrementBank(self, reverseOrder=False, restore=False):    
         increment = 1 if not reverseOrder else -1
-        ledStates = deque()
+            
+        if not restore:
+            self.ledStates.rotate(increment)
+            
         for l in self.ledPorts:
-            ledStates.append(GPIO.input(l))
-            if ledStates[-1] == GPIO.HIGH:
-                activeLeds = activeLeds + 1
-        if activeLeds == 0:
-            ledStates[0] = GPIO.HIGH
-        ledStates.rotate(increment)
+            GPIO.output(l, self.ledStates[self.ledPorts.index(l)])
+                
+        if self.ledStates.count(GPIO.HIGH) != 1:
+            self.initLeds()
+            
+    def switchAllLeds(self, state):
+        if state:
+            state = GPIO.HIGH
+        else:
+            state = GPIO.LOW
+            
         for l in self.ledPorts:
-            GPIO.output(l, ledStates[self.ledPorts.index(l)])
+            GPIO.output(l, state)       
     
     def getBank(self):
         # Return the currently active bank (A, B, C, ...)
-        for l in self.ledPorts:
-            if GPIO.input(l) == GPIO.HIGH:
-                return chr(65 + self.ledPorts.index(l))
+        try:
+            return chr(65 + list(self.ledStates).index(GPIO.HIGH))
+        except:
+            self.initLeds()
         
         # Default: Bank A
         return 'A'
@@ -237,7 +257,7 @@ class UserInterface:
         return self.switchNbs[channel]
             
     # Mode switch
-    def activateMode(self):
+    def activateAltMode(self):
         self.altMode = True
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
@@ -245,9 +265,14 @@ class UserInterface:
         else:
             self.altMode = False
             return False
-    def isAltModeOff(self):
-        return not self.isAltModeOn()
-    
+    def activateShiftMode(self):
+        self.shiftMode = True
+        self.altMode = False
+    def deactivateShiftMode(self):
+        self.shiftMode = False
+    def isShiftModeOn(self):
+            return self.shiftMode
+                    
     # Function that sends a shutdown command after a period of inactivity
     def sendShutdownSignal(self):
         logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
@@ -273,17 +298,22 @@ class UserInterface:
         
     # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
-        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
+        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
                                                                                channel, 
-                                                                               "ON" if self.isAltModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF",
+                                                                               "ON" if self.isShiftModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
-                                                                                    "ON" if self.isAltModeOn() else "OFF"))
+                                                                                    "ON" if self.isAltModeOn() else "OFF",
+                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
 
         if self.queue is not None:
             try:
                 if self.isAltModeOn():
                     self.queue.put("TRACK {:d}".format(self.getSwitch(channel)))
+                elif self.isShiftModeOn():
+                    self.queue.put("ROOM {:d}".format(self.getSwitch(channel)))
+                    self.deactivateShiftMode()
                 else:
                     self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
@@ -294,11 +324,14 @@ class UserInterface:
         
     # Callback for bank switch 
     def callbackBankSwitch(self, channel):
-        logging.debug("Bank switch pressed (channel {:d}, alt. mode: {})".format(channel, 
-                                                                               "ON" if self.isAltModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Bank switch, alt. mode: {}]".format(channel, 
-                                                                                    "ON" if self.isAltModeOn() else "OFF"))
-        self.incrementBank(self.isAltModeOn())
+        logging.debug("Bank switch pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF",
+                                                                               "ON" if self.isShiftModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Bank switch, alt. mode: {}, shift mode: {}]".format(channel, 
+                                                                                    "ON" if self.isAltModeOn() else "OFF",
+                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
+        if not self.isShiftModeOn():
+            self.incrementBank(self.isAltModeOn())
         
         self.resetShutdownTimer()
         self.incrementNbOperations()
@@ -308,34 +341,44 @@ class UserInterface:
         logging.debug("Mode switch pressed (channel {:d})".format(channel))
         print("Edge detected on channel {:d} [Mode switch]".format(channel))
         
-        self.activateMode()
+        self.activateAltMode()
         
         self.resetShutdownTimer()
         self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
     def callbackControlSwitch(self, channel):
-        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {})".format(self.switches[channel], 
+        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
                                                                                channel, 
-                                                                               "ON" if self.isAltModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}]".format(channel, 
+                                                                               "ON" if self.isAltModeOn() else "OFF",
+                                                                               "ON" if self.isShiftModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
-                                                                                    "ON" if self.isAltModeOn() else "OFF"))
+                                                                                    "ON" if self.isAltModeOn() else "OFF",
+                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
 
         if self.queue is not None:
             try:
-                if self.switches[channel] == self.playSwitch:
-                    self.queue.put("PLAY/PAUSE")
-                elif self.switches[channel] == self.forwardSwitch:
-                    self.queue.put("FORWARD")
-                elif self.switches[channel] == self.backSwitch and self.isAltModeOff():
-                    self.queue.put("BACK")
+                if self.isShiftModeOn():
+                    if self.switches[channel] == self.playSwitch:
+                        self.deactivateShiftMode()
+                else:
+                    if self.switches[channel] == self.playSwitch and not self.isAltModeOn():
+                        self.queue.put("PLAY/PAUSE")
+                    elif self.switches[channel] == self.forwardSwitch:
+                        self.queue.put("FORWARD")
+                    elif self.switches[channel] == self.backSwitch and not self.isAltModeOn():
+                        self.queue.put("BACK")
             except:
                 pass
 
         if self.switches[channel] == self.backSwitch and self.isAltModeOn():
             # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
             self.initiateSwitchOff()
+
+        if self.switches[channel] == self.playSwitch and self.isAltModeOn():
+            # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
+            self.activateShiftMode()
             
         self.resetShutdownTimer()
         self.incrementNbOperations()
@@ -383,6 +426,37 @@ class UserInterface:
                 self.queue.put("SHUTDOWN")
             except:
                 pass
+        
+    # When shift mode is on, signal it by blinking all bank leds until a room is selected or play is pressed anew    
+    def blinkLedsForShift(self):
+        # Not in shift mode: Nothing to do
+        if not self.blinking and not self.isShiftModeOn():
+            return
+        
+        # Start blinking
+        if not self.blinking and self.isShiftModeOn():
+            self.blinking = True
+            # Switch on all leds
+            self.switchAllLeds(True)
+            self.blinkRefTime = time.time()
+            self.blinkState = True
+            return
+            
+        # Stop blinking
+        if self.blinking and not self.isShiftModeOn():
+            self.blinking = False
+            # Switch on only the led corresponding to the current bank 
+            self.incrementBank(False, True)
+            return
+            
+        # Continue blinking
+        if self.blinking and self.isShiftModeOn():
+            # Alternately switch on and off all leds
+            if time.time() - self.blinkRefTime >= self.blinkPeriod:
+                self.blinkRefTime = time.time()
+                self.blinkState = not self.blinkState
+                self.switchAllLeds(self.blinkState)
+        
             
                     
     def run(self, stopper=None, queue=None):         
@@ -411,6 +485,8 @@ class UserInterface:
                             break
                     except:
                         pass
+                    
+                self.blinkLedsForShift()
  
         except KeyboardInterrupt:
             logging.info("Stop (Ctrl-C from main loop)") 
