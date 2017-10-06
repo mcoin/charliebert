@@ -79,7 +79,7 @@ class SonosInterface():
             # There was a problem: Redefine the speaker
             sp = self.speakers[room]
             
-            return sp
+            return sp.group.coordinator
 
     def startPlaylist(self, playlistName, room):
         try:
