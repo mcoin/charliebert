@@ -37,8 +37,6 @@ class UserInterface:
         
         # Timer to trigger a shutdown after a given period of inactivity
         self.shutdownTimePeriod = 1800 # s
-        self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
-        self.shutdownTimer.setName("ShutdownTimer")
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
@@ -207,7 +205,7 @@ class UserInterface:
                 except:
                     pass
                 
-            self.resetShutdownTimer()
+            self.setShutdownTimer()
             self.incrementNbOperations()
                         
     def incrementNbOperations(self):
@@ -282,11 +280,14 @@ class UserInterface:
                 pass
             
     # Reset the shutdown timer with each new key press
-    def resetShutdownTimer(self):
+    def setShutdownTimer(self):
         try:
-            # Cancel current timer
-            self.shutdownTimer.cancel()
-            # Restart timer to monitor inactivity after the last key press
+            # Cancel current timer if applicable
+            try:
+                self.shutdownTimer.cancel()
+            except:
+                pass
+            # (Re)Start timer to monitor inactivity after the last key press
             self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
             self.shutdownTimer.setName("ShutdownTimer")
             self.shutdownTimer.start()
@@ -319,7 +320,7 @@ class UserInterface:
 	if self.isShiftModeOn():
 	    self.deactivateShiftMode()
             
-        self.resetShutdownTimer()
+        self.setShutdownTimer()
         self.incrementNbOperations()
         
     # Callback for bank switch 
@@ -335,7 +336,7 @@ class UserInterface:
         else:
 	    self.deactivateShiftMode()
         
-        self.resetShutdownTimer()
+        self.setShutdownTimer()
         self.incrementNbOperations()
         
     # Callback for mode switch
@@ -345,7 +346,7 @@ class UserInterface:
         
         self.activateAltMode()
         
-        self.resetShutdownTimer()
+        self.setShutdownTimer()
         self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
@@ -382,7 +383,7 @@ class UserInterface:
             # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
             self.activateShiftMode()
             
-        self.resetShutdownTimer()
+        self.setShutdownTimer()
         self.incrementNbOperations()
 
     # Start procedure to switch off the pi under certain conditions
@@ -467,7 +468,7 @@ class UserInterface:
             print("Reacting to interrupts from switches")
             self.queue = queue
             logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
-            self.shutdownTimer.start()
+            self.setShutdownTimer()
               
             while True:
                 sleep(0.1)  # sleep 100 msec       
@@ -507,6 +508,16 @@ class UserInterface:
 #                self.switchOffTimer.join()
 #            except:
 #                pass
+            logging.debug("Canceling shutdown timer")
+            try:
+                self.shutdownTimer.cancel()
+            except:
+                pass
+            logging.debug("Canceling switch off timer")
+            try:
+                self.switchOffTimer.cancel()
+            except:
+                pass
             logging.debug("Over.")
             
         logging.debug("Bye!")
