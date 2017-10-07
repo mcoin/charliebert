@@ -36,8 +36,10 @@ class UserInterface:
         self.queue = None
         
         # Timer to trigger a shutdown after a given period of inactivity
-        self.shutdownTimePeriod = 1800 # s
+        #self.shutdownTimePeriod = 1800 # s
+        self.shutdownTimePeriod = 600 # s
         self.shutdownTimer = None
+        self.startTime = time.asctime( time.localtime(time.time()) )
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
@@ -273,12 +275,13 @@ class UserInterface:
     # Function that sends a shutdown command after a period of inactivity
     def sendShutdownSignal(self):
         logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
+        logging.debug("   [Start time: {}]".format(self.startTime))
 
         if self.queue is not None:
             try:
                 self.queue.put("SHUTDOWN")
             except:
-                pass
+                logging.debug("Problem while sending the shutdown signal")
             
     # Reset the shutdown timer with each new key press
     def setShutdownTimer(self):

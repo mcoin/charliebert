@@ -75,7 +75,15 @@ class SonosInterfaceThread(threading.Thread):
                         logging.debug("Command SHUTDOWN")
                         # Hack to work around the need for a password when using sudo:
                         # sudo chmod u+s /sbin/shutdown
-                        os.system("/sbin/shutdown -h now")
+                        # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
+                        os.system("( sleep 2; /sbin/shutdown -h now ) &")
+
+                        try:
+                            logging.debug("Setting stopper to stop charliebert before shutting down the pi (otherwise the shutdown thread will survive for the next startup)")
+                            self.stopper.set()
+                        except:
+                            logging.debug("Could not set stopper")
+
                     elif m.group(1) == "ROOM":
                         roomNb = int(m.group(5))
                         logging.debug("Command ROOM: {:d}".format(roomNb))
