@@ -37,6 +37,7 @@ class UserInterface:
         
         # Timer to trigger a shutdown after a given period of inactivity
         self.shutdownTimePeriod = 1800 # s
+        self.shutdownTimer = None
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
@@ -282,9 +283,14 @@ class UserInterface:
     # Reset the shutdown timer with each new key press
     def setShutdownTimer(self):
         try:
+            logging.debug("Starting timer to shut down the pi when inactive for {} seconds".format(self.shutdownTimePeriod))
             # Cancel current timer if applicable
             try:
-                self.shutdownTimer.cancel()
+                if self.shutdownTimer is None:
+                    logging.debug("Setting the timer for the first time")
+                else:
+                    logging.debug("Resetting the timer")
+                    self.shutdownTimer.cancel()
             except:
                 pass
             # (Re)Start timer to monitor inactivity after the last key press
@@ -292,7 +298,7 @@ class UserInterface:
             self.shutdownTimer.setName("ShutdownTimer")
             self.shutdownTimer.start()
         except:
-            logging.error("Problem encountered when trying to reset the shutdown timer")
+            logging.error("Problem encountered when trying to (re)set the shutdown timer")
 
         
     # Callback for switches (start playlist)
