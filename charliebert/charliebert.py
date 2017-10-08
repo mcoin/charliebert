@@ -178,7 +178,7 @@ def charliebert():
         os.remove(switchFile)
     
     try:
-        while not os.path.exists(switchFile):
+        while not os.path.exists(switchFile) and not stopper.is_set():
             pass
         
         if os.path.exists(switchFile):
@@ -190,7 +190,8 @@ def charliebert():
         logging.debug("Stop requested")
     
     finally:
-        stopper.set() 
+        if not stopper.is_set():
+            stopper.set() 
         while not queue.empty():
             queue.get()
         queue.put(None)
