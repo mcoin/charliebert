@@ -21,7 +21,7 @@ class UserInterfaceThread(threading.Thread):
         logging.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
-    def __init__(self, stopper, queue):
+    def __init__(self, stopper, queue, shutdownPi):
         super(SonosInterfaceThread, self).__init__()
         self.stopper = stopper
         self.queue = queue
@@ -31,6 +31,7 @@ class SonosInterfaceThread(threading.Thread):
         self.playlistBasename = "zCharliebert"
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
         self.si = SonosInterface()
+        self.shutdownPi = shutdownPi
         
     def run(self):
         logging.debug("SonosInterfaceThread starting")
@@ -73,13 +74,15 @@ class SonosInterfaceThread(threading.Thread):
                         self.si.adjustVolume(volDelta, self.room)
                     elif m.group(1) == "SHUTDOWN":
                         logging.debug("Command SHUTDOWN")
-                        # Hack to work around the need for a password when using sudo:
-                        # sudo chmod u+s /sbin/shutdown
-                        # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
-                        os.system("( sleep 2; /sbin/shutdown -h now ) &")
+                        ## Hack to work around the need for a password when using sudo:
+                        ## sudo chmod u+s /sbin/shutdown
+                        ## (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
+                        #os.system("( sleep 2; /sbin/shutdown -h now ) &")
+                        self.shutdownPi.set()
 
                         try:
-                            logging.debug("Setting stopper to stop charliebert before shutting down the pi (otherwise the shutdown thread will survive for the next startup)")
+                            logging.debug("Setting stopper to stop charliebert before shutting down the pi " + \
+                                          "(otherwise the shutdown thread will survive for the next startup)")
                             self.stopper.set()
                         except:
                             logging.debug("Could not set stopper")
@@ -161,10 +164,11 @@ def charliebert():
     stopper = threading.Event()
     # Queue for commands
     queue = Queue.Queue()
-    
+    #
+    shutdownPi = threading.Event()
     
     userInterfaceThread = UserInterfaceThread(stopper, queue)
-    sonosInterfaceThread = SonosInterfaceThread(stopper, queue)
+    sonosInterfaceThread = SonosInterfaceThread(stopper, queue, shutdownPi)
 
     
     logging.debug("Starting userInterfaceThread thread")
@@ -195,6 +199,13 @@ def charliebert():
         while not queue.empty():
             queue.get()
         queue.put(None)
+        
+    if shutdownPi.is_set():
+        logging.debug("Shutting down Pi now")
+        # Hack to work around the need for a password when using sudo:
+        # sudo chmod u+s /sbin/shutdown
+        # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
+        os.system("/sbin/shutdown -h now")
             
 
 if __name__ == '__main__':
