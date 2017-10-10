@@ -197,6 +197,28 @@ class SonosInterfaceThread(threading.Thread):
 #     except:
 #         logging.error("Problem encountered when trying to (re)set the shutdown timer")
 #             
+class ShutdownTimerThread(threading.Thread):
+    def __init__(self, stopper, reset, shutdownFlag):
+        super(ShutdownTimerThread, self).__init__()
+        self.stopper = stopper
+        self.reset = reset
+        self.shutdownFlag = shutdownFlag
+        #self.shutdownTimePeriod = 1800 # s
+        self.shutdownTimePeriod = 120 # s
+        
+    def run(self):
+        logging.debug("ShutdownTimerThread starting")
+        while not stopper.is_set():
+            while not self.reset.wait(self.shutdownTimerPeriod) and not stopper.is_set():
+                logging.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
+                self.shutdownFlag.set()
+                
+            if self.reset.is_set():
+                logging.debug("ShutdownTimerThread: Resetting the shutdown timer")
+
+        logging.debug("ShutdownTimerThread stopping")
+        
+        
             
 def charliebert():
     # State indicator
@@ -209,12 +231,16 @@ def charliebert():
     userInterfaceThread = UserInterfaceThread(stopper, q)
     sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
 
+    shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi)
     
     logging.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()
     logging.debug("Starting sonosInterfaceThread thread")
     sonosInterfaceThread.start()
 
+    logging.debug("Starting shutdownTimerThread thread")
+    shutdownTimerThread.start()
+    
     # File acting as a switch for this application:
     switchFile = "CHARLIEBERT_STOP"
     if os.path.exists(switchFile):
