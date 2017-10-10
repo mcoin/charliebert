@@ -1,6 +1,9 @@
 import time
 import threading
-import Queue
+try:
+    import Queue as Q # For python 2
+except:
+    import queue as Q # For python 3
 import logging
 import re
 import os
@@ -9,22 +12,22 @@ from sonosInterface import SonosInterface
 
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, queue):
+    def __init__(self, stopper, q):
         super(UserInterfaceThread, self).__init__()
         self.stopper = stopper
-        self.queue = queue
+        self.q = q
         self.ui = UserInterface()
         
     def run(self):
         logging.debug("UserInterfaceThread starting")
-        self.ui.run(self.stopper, self.queue)
+        self.ui.run(self.stopper, self.q)
         logging.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
-    def __init__(self, stopper, queue, shutdownPi):
+    def __init__(self, stopper, q, shutdownPi):
         super(SonosInterfaceThread, self).__init__()
         self.stopper = stopper
-        self.queue = queue
+        self.q = q
         self.room = "Office"
         #self.room = "Bedroom"
         self.network = "aantgr"
@@ -39,11 +42,11 @@ class SonosInterfaceThread(threading.Thread):
             while not self.stopper.is_set():
                 #time.sleep(1)
                 logging.debug("Sonos Interface: Waiting for a command to execute")
-                command = self.queue.get()
+                command = self.q.get()
                 if command is None:
                     break
                 logging.debug("Sonos Interface: Obtained command {}".format(command))
-                self.queue.task_done()
+                self.q.task_done()
 
                 # Process commands using the following mini-parser: 'CMD [BANK] [VALUE]'
                 m = self.parser.match(command)
@@ -163,12 +166,12 @@ def charliebert():
     # State indicator
     stopper = threading.Event()
     # Queue for commands
-    queue = Queue.Queue()
+    q = Q.Queue()
     #
     shutdownPi = threading.Event()
     
-    userInterfaceThread = UserInterfaceThread(stopper, queue)
-    sonosInterfaceThread = SonosInterfaceThread(stopper, queue, shutdownPi)
+    userInterfaceThread = UserInterfaceThread(stopper, q)
+    sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
 
     
     logging.debug("Starting userInterfaceThread thread")
@@ -196,9 +199,9 @@ def charliebert():
     finally:
         if not stopper.is_set():
             stopper.set() 
-        while not queue.empty():
-            queue.get()
-        queue.put(None)
+        while not q.empty():
+            q.get()
+        q.put(None)
         
     if shutdownPi.is_set():
         logging.debug("Shutting down Pi now")
