@@ -12,15 +12,16 @@ from sonosInterface import SonosInterface
 
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q):
+    def __init__(self, stopper, q, reset):
         super(UserInterfaceThread, self).__init__()
         self.stopper = stopper
         self.q = q
+        self.reset = reset
         self.ui = UserInterface()
         
     def run(self):
         logging.debug("UserInterfaceThread starting")
-        self.ui.run(self.stopper, self.q)
+        self.ui.run(self.stopper, self.q, self.reset)
         logging.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
@@ -208,13 +209,15 @@ class ShutdownTimerThread(threading.Thread):
         
     def run(self):
         logging.debug("ShutdownTimerThread starting")
-        while not stopper.is_set():
-            while not self.reset.wait(self.shutdownTimerPeriod) and not stopper.is_set():
+        while not self.stopper.is_set():
+            while not self.reset.wait(self.shutdownTimePeriod) and not self.stopper.is_set():
                 logging.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
                 self.shutdownFlag.set()
+                self.stopper.set()
                 
-            if self.reset.is_set():
+            if self.reset.is_set() and not self.stopper.is_set():
                 logging.debug("ShutdownTimerThread: Resetting the shutdown timer")
+                self.reset.clear()
 
         logging.debug("ShutdownTimerThread stopping")
         
@@ -227,8 +230,9 @@ def charliebert():
     q = Q.Queue()
     #
     shutdownPi = threading.Event()
+    reset = threading.Event()
     
-    userInterfaceThread = UserInterfaceThread(stopper, q)
+    userInterfaceThread = UserInterfaceThread(stopper, q, reset)
     sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
 
     shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi)
@@ -266,10 +270,14 @@ def charliebert():
            
     except KeyboardInterrupt:
         logging.debug("Stop requested")
+        stopper.set() 
+        reset.set() 
     
     finally:
         if not stopper.is_set():
             stopper.set() 
+        if not reset.is_set():
+            reset.set() 
             
 #         logging.debug("Canceling shutdown timer")
 #         try:
@@ -286,6 +294,7 @@ def charliebert():
         # Hack to work around the need for a password when using sudo:
         # sudo chmod u+s /sbin/shutdown
         # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
+        #logging.debug("/sbin/shutdown -h now")
         os.system("/sbin/shutdown -h now")
             
 

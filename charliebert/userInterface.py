@@ -204,6 +204,7 @@ class UserInterface:
                 except:
                     pass
                 
+            self.reset.set()
             self.incrementNbOperations()
                         
     def incrementNbOperations(self):
@@ -293,6 +294,7 @@ class UserInterface:
         if self.isShiftModeOn():
             self.deactivateShiftMode()
             
+        self.reset.set()
         self.incrementNbOperations()
         
     # Callback for bank switch 
@@ -308,6 +310,7 @@ class UserInterface:
         else:
             self.deactivateShiftMode()
         
+        self.reset.set()
         self.incrementNbOperations()
         
     # Callback for mode switch
@@ -317,6 +320,7 @@ class UserInterface:
         
         self.activateAltMode()
         
+        self.reset.set()
         self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
@@ -353,6 +357,7 @@ class UserInterface:
             # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
             self.activateShiftMode()
             
+        self.reset.set()
         self.incrementNbOperations()
 
     # Start procedure to switch off the pi under certain conditions
@@ -431,13 +436,14 @@ class UserInterface:
         
             
                     
-    def run(self, stopper=None, queue=None):
+    def run(self, stopper=None, queue=None, reset=None):
         try:
             logging.info("Starting main loop")  
             self.stopper = stopper
             print("Reacting to interrupts from switches")
             self.queue = queue
 
+            self.reset = reset
               
             while True:
                 sleep(0.1)  # sleep 100 msec       
