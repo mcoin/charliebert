@@ -29,6 +29,8 @@ class UserInterface:
         logging.debug("Setting up rotary encoder")
         self.initRotaryEncoder()
     
+        self.stopper = None
+        
         # Break the main loop if marked True
         self.stopRequested = False
         
@@ -285,6 +287,10 @@ class UserInterface:
             
     # Reset the shutdown timer with each new key press
     def setShutdownTimer(self):
+        if self.stopper.is_set():
+            logging.debug("Refusing to set a shutdown timer since we are quitting")
+            return
+        
         try:
             logging.debug("Starting timer to shut down the pi when inactive for {} seconds".format(self.shutdownTimePeriod))
             # Cancel current timer if applicable
@@ -471,9 +477,10 @@ class UserInterface:
         
             
                     
-    def run(self, stopper=None, queue=None):         
+    def run(self, stopper=None, queue=None):
         try:
             logging.info("Starting main loop")  
+            self.stopper = stopper
             print("Reacting to interrupts from switches")
             self.queue = queue
             logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
@@ -491,9 +498,9 @@ class UserInterface:
                     logging.debug("Requesting stop")
                     break
 
-                if stopper is not None:
+                if self.stopper is not None:
                     try:
-                        if stopper.is_set():
+                        if self.stopper.is_set():
                             break
                     except:
                         pass
