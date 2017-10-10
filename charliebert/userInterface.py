@@ -332,8 +332,8 @@ class UserInterface:
             except:
                 pass
 
-	if self.isShiftModeOn():
-	    self.deactivateShiftMode()
+        if self.isShiftModeOn():
+            self.deactivateShiftMode()
             
         self.setShutdownTimer()
         self.incrementNbOperations()
@@ -349,7 +349,7 @@ class UserInterface:
         if not self.isShiftModeOn():
             self.incrementBank(self.isAltModeOn())
         else:
-	    self.deactivateShiftMode()
+            self.deactivateShiftMode()
         
         self.setShutdownTimer()
         self.incrementNbOperations()
@@ -375,10 +375,10 @@ class UserInterface:
                                                                                     "ON" if self.isAltModeOn() else "OFF",
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
 
-	if self.switches[channel] == self.playSwitch and self.isShiftModeOn():
-	    if self.switches[channel] == self.playSwitch:
-		self.deactivateShiftMode()
-	else:
+        if self.switches[channel] == self.playSwitch and self.isShiftModeOn():
+            if self.switches[channel] == self.playSwitch:
+                self.deactivateShiftMode()
+        else:
             if self.queue is not None:
                 try:
                     if self.switches[channel] == self.playSwitch and not self.isAltModeOn():
