@@ -9,6 +9,7 @@ import re
 import os
 from userInterface import UserInterface
 from sonosInterface import SonosInterface
+from datetime import datetime
 
 
 class UserInterfaceThread(threading.Thread):
@@ -199,21 +200,24 @@ class SonosInterfaceThread(threading.Thread):
 #         logging.error("Problem encountered when trying to (re)set the shutdown timer")
 #             
 class ShutdownTimerThread(threading.Thread):
-    def __init__(self, stopper, reset, shutdownFlag):
+    def __init__(self, stopper, reset, shutdownFlag, startTime):
         super(ShutdownTimerThread, self).__init__()
         self.stopper = stopper
         self.reset = reset
         self.shutdownFlag = shutdownFlag
+        self.startTime = startTime
         #self.shutdownTimePeriod = 1800 # s
         self.shutdownTimePeriod = 120 # s
         
     def run(self):
         logging.debug("ShutdownTimerThread starting")
         while not self.stopper.is_set():
-            while not self.reset.wait(self.shutdownTimePeriod) and not self.stopper.is_set():
-                logging.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
-                self.shutdownFlag.set()
-                self.stopper.set()
+            while not self.reset.wait(self.shutdownTimePeriod):
+                if not self.stopper.is_set():
+                    logging.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
+                    logging.debug("Original start time: {}".format(self.startTime))
+                    self.shutdownFlag.set()
+                    self.stopper.set()
                 
             if self.reset.is_set() and not self.stopper.is_set():
                 logging.debug("ShutdownTimerThread: Resetting the shutdown timer")
@@ -231,11 +235,13 @@ def charliebert():
     #
     shutdownPi = threading.Event()
     reset = threading.Event()
+    startTime = "charliebert start: {}".format(datetime.now())
+    logging.debug("{}".format(self.startTime))
     
     userInterfaceThread = UserInterfaceThread(stopper, q, reset)
     sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
 
-    shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi)
+    shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime)
     
     logging.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()
@@ -248,6 +254,7 @@ def charliebert():
     # File acting as a switch for this application:
     switchFile = "CHARLIEBERT_STOP"
     if os.path.exists(switchFile):
+        logging.debug("Removing switch file CHARLIEBERT_STOP")
         os.remove(switchFile)
     
 #     # Timer to trigger a shutdown after a given period of inactivity
