@@ -37,12 +37,6 @@ class UserInterface:
         # Event queue to trigger actions from the server
         self.queue = None
         
-        # Timer to trigger a shutdown after a given period of inactivity
-        #self.shutdownTimePeriod = 1800 # s
-        self.shutdownTimePeriod = 600 # s
-        self.shutdownTimer = None
-        self.startTime = time.asctime( time.localtime(time.time()) )
-        
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
         
@@ -210,7 +204,6 @@ class UserInterface:
                 except:
                     pass
                 
-            self.setShutdownTimer()
             self.incrementNbOperations()
                         
     def incrementNbOperations(self):
@@ -273,41 +266,6 @@ class UserInterface:
         self.shiftMode = False
     def isShiftModeOn(self):
             return self.shiftMode
-                    
-    # Function that sends a shutdown command after a period of inactivity
-    def sendShutdownSignal(self):
-        logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
-        logging.debug("   [Start time: {}]".format(self.startTime))
-
-        if self.queue is not None:
-            try:
-                self.queue.put("SHUTDOWN")
-            except:
-                logging.debug("Problem while sending the shutdown signal")
-            
-    # Reset the shutdown timer with each new key press
-    def setShutdownTimer(self):
-        if self.stopper.is_set():
-            logging.debug("Refusing to set a shutdown timer since we are quitting")
-            return
-        
-        try:
-            logging.debug("Starting timer to shut down the pi when inactive for {} seconds".format(self.shutdownTimePeriod))
-            # Cancel current timer if applicable
-            try:
-                if self.shutdownTimer is None:
-                    logging.debug("Setting the timer for the first time")
-                else:
-                    logging.debug("Resetting the timer")
-                    self.shutdownTimer.cancel()
-            except:
-                pass
-            # (Re)Start timer to monitor inactivity after the last key press
-            self.shutdownTimer = threading.Timer(self.shutdownTimePeriod, self.sendShutdownSignal)
-            self.shutdownTimer.setName("ShutdownTimer")
-            self.shutdownTimer.start()
-        except:
-            logging.error("Problem encountered when trying to (re)set the shutdown timer")
 
         
     # Callback for switches (start playlist)
@@ -335,7 +293,6 @@ class UserInterface:
         if self.isShiftModeOn():
             self.deactivateShiftMode()
             
-        self.setShutdownTimer()
         self.incrementNbOperations()
         
     # Callback for bank switch 
@@ -351,7 +308,6 @@ class UserInterface:
         else:
             self.deactivateShiftMode()
         
-        self.setShutdownTimer()
         self.incrementNbOperations()
         
     # Callback for mode switch
@@ -361,7 +317,6 @@ class UserInterface:
         
         self.activateAltMode()
         
-        self.setShutdownTimer()
         self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
@@ -398,7 +353,6 @@ class UserInterface:
             # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
             self.activateShiftMode()
             
-        self.setShutdownTimer()
         self.incrementNbOperations()
 
     # Start procedure to switch off the pi under certain conditions
@@ -483,8 +437,7 @@ class UserInterface:
             self.stopper = stopper
             print("Reacting to interrupts from switches")
             self.queue = queue
-            logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
-            self.setShutdownTimer()
+
               
             while True:
                 sleep(0.1)  # sleep 100 msec       
@@ -524,11 +477,7 @@ class UserInterface:
 #                self.switchOffTimer.join()
 #            except:
 #                pass
-            logging.debug("Canceling shutdown timer")
-            try:
-                self.shutdownTimer.cancel()
-            except:
-                pass
+
             logging.debug("Canceling switch off timer")
             try:
                 self.switchOffTimer.cancel()

@@ -162,6 +162,42 @@ class SonosInterfaceThread(threading.Thread):
         
         self.network = network
         
+# # Function that sends a shutdown command after a period of inactivity
+# def sendShutdownSignal():
+#     logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
+#     logging.debug("   [Start time: {}]".format(self.startTime))
+# 
+#     if self.queue is not None:
+#         try:
+#             self.queue.put("SHUTDOWN")
+#         except:
+#             logging.debug("Problem while sending the shutdown signal")
+#         
+# # Reset the shutdown timer with each new key press
+# def setShutdownTimer(shutdownTimer, stopper):
+#     if stopper.is_set():
+#         logging.debug("Refusing to set a shutdown timer since we are quitting")
+#         return
+#     
+#     try:
+#         logging.debug("Starting timer to shut down the pi when inactive for {} seconds".format(self.shutdownTimePeriod))
+#         # Cancel current timer if applicable
+#         try:
+#             if shutdownTimer is None:
+#                 logging.debug("Setting the timer for the first time")
+#             else:
+#                 logging.debug("Resetting the timer")
+#                 shutdownTimer.cancel()
+#         except:
+#             pass
+#         # (Re)Start timer to monitor inactivity after the last key press
+#         shutdownTimer = threading.Timer(shutdownTimePeriod, sendShutdownSignal)
+#         shutdownTimer.setName("ShutdownTimer")
+#         shutdownTimer.start()
+#     except:
+#         logging.error("Problem encountered when trying to (re)set the shutdown timer")
+#             
+            
 def charliebert():
     # State indicator
     stopper = threading.Event()
@@ -184,6 +220,15 @@ def charliebert():
     if os.path.exists(switchFile):
         os.remove(switchFile)
     
+#     # Timer to trigger a shutdown after a given period of inactivity
+#     #shutdownTimePeriod = 1800 # s
+#     shutdownTimePeriod = 600 # s
+#     shutdownTimer = None
+#     startTime = time.asctime( time.localtime(time.time()) )
+#     
+#     logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
+#     setShutdownTimer(shutdownTimer, stopper)
+            
     try:
         while not os.path.exists(switchFile) and not stopper.is_set():
             pass
@@ -199,6 +244,13 @@ def charliebert():
     finally:
         if not stopper.is_set():
             stopper.set() 
+            
+#         logging.debug("Canceling shutdown timer")
+#         try:
+#             self.shutdownTimer.cancel()
+#         except:
+#             pass
+            
         while not q.empty():
             q.get()
         q.put(None)
