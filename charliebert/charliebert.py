@@ -225,6 +225,31 @@ class ShutdownTimerThread(threading.Thread):
 
         logging.debug("ShutdownTimerThread stopping")
         
+# Variant that does not rely on the "hardware" clock
+class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
+    def __init__(self):
+        super(ShutdownTimerThreadWorkaround, self).__init__()
+        self.time = 0
+        self.timeInterval = 5
+        
+    def run(self):
+        logging.debug("ShutdownTimerThreadWorkaround starting")
+        while not self.stopper.is_set():
+            self.reset.clear()
+            while self.time < self.shutdownTimePeriod:
+                time.sleep(self.timeInterval)
+                self.time += self.timeInterval
+                
+                if self.reset.is_set():
+                    logging.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
+                    self.time = 0
+                    break
+                
+            if not self.reset.is_set():
+                logging.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
+                self.shutdownFlag.set()
+                self.stopper.set()
+                
         
             
 def charliebert():
@@ -241,7 +266,8 @@ def charliebert():
     userInterfaceThread = UserInterfaceThread(stopper, q, reset)
     sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
 
-    shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime)
+    #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime)
+    shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime)
     
     logging.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()
