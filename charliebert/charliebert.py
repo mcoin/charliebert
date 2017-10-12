@@ -236,7 +236,7 @@ def charliebert():
     shutdownPi = threading.Event()
     reset = threading.Event()
     startTime = "charliebert start: {}".format(datetime.now())
-    logging.debug("{}".format(self.startTime))
+    logging.debug("{}".format(startTime))
     
     userInterfaceThread = UserInterfaceThread(stopper, q, reset)
     sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
