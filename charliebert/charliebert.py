@@ -288,24 +288,24 @@ def charliebert():
 
 if __name__ == '__main__':
     # Logging
-#     logging.basicConfig(filename='charliebert.log', 
-#                         level=logging.DEBUG, 
-#                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
-#                         datefmt='%Y-%m-%d %H:%M:%S')
-    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-    logFile = 'charliebert.log'
-    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
-                                     backupCount=2, encoding=None, delay=0)
-    logHandler.setFormatter(logFormatter)
-    logHandler.setLevel(logging.DEBUG)
-    logger = logging.getLogger('root')
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logHandler)    
-    
+    logging.basicConfig(filename='charliebert.log', 
+                         level=logging.DEBUG, 
+                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
+                         datefmt='%Y-%m-%d %H:%M:%S')
+#    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+#    logFile = 'charliebert.log'
+#    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
+#                                     backupCount=2, encoding=None, delay=0)
+#    logHandler.setFormatter(logFormatter)
+#    logHandler.setLevel(logging.DEBUG)
+#    logger = logging.getLogger('root')
+#    logger.setLevel(logging.DEBUG)
+#    logger.addHandler(logHandler)    
+
     logging.getLogger("soco").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-        
+
     logging.info("Starting charliebert")             
     charliebert()
     logging.info("Quitting charliebert")
