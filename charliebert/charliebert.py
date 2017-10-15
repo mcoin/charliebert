@@ -227,8 +227,8 @@ class ShutdownTimerThread(threading.Thread):
         
 # Variant that does not rely on the "hardware" clock
 class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
-    def __init__(self):
-        super(ShutdownTimerThreadWorkaround, self).__init__()
+    def __init__(self, stopper, reset, shutdownFlag, startTime):
+        super(ShutdownTimerThreadWorkaround, self).__init__(stopper, reset, shutdownFlag, startTime)
         self.time = 0
         self.timeInterval = 5
         
