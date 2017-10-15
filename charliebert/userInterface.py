@@ -204,7 +204,8 @@ class UserInterface:
                 except:
                     pass
                 
-            self.reset.set()
+            if self.reset is not None:
+                self.reset.set()
             self.incrementNbOperations()
                         
     def incrementNbOperations(self):
@@ -294,7 +295,8 @@ class UserInterface:
         if self.isShiftModeOn():
             self.deactivateShiftMode()
             
-        self.reset.set()
+        if self.reset is not None:
+            self.reset.set()
         self.incrementNbOperations()
         
     # Callback for bank switch 
@@ -310,7 +312,8 @@ class UserInterface:
         else:
             self.deactivateShiftMode()
         
-        self.reset.set()
+        if self.reset is not None:
+            self.reset.set()
         self.incrementNbOperations()
         
     # Callback for mode switch
@@ -320,7 +323,8 @@ class UserInterface:
         
         self.activateAltMode()
         
-        self.reset.set()
+        if self.reset is not None:
+            self.reset.set()
         self.incrementNbOperations()
         
      # Callback for switches (play/pause, skip forward/backward)
@@ -357,7 +361,8 @@ class UserInterface:
             # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
             self.activateShiftMode()
             
-        self.reset.set()
+        if self.reset is not None:
+            self.reset.set()
         self.incrementNbOperations()
 
     # Start procedure to switch off the pi under certain conditions
