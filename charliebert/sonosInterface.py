@@ -1,10 +1,13 @@
 import soco
 import logging
+from logging.handlers import RotatingFileHandler
 from time import sleep
 import time
 
 class SonosInterface():
-    def __init__(self):
+    def __init__(self, logger):
+        # Logging mechanism
+        self.logger = logger
         # Initialize Sonos system characteristics
         self.list_sonos = []
     
@@ -54,7 +57,7 @@ class SonosInterface():
         try:
             self.connect()
         except:
-            logging.error("Problem establishing connection to the Sonos system")
+            self.logger.error("Problem establishing connection to the Sonos system")
             return
 
         for name, speaker in self.speakers.items():
@@ -64,11 +67,11 @@ class SonosInterface():
         try:
             self.connect()
         except:
-            logging.error("Problem establishing connection to the Sonos system")
+            self.logger.error("Problem establishing connection to the Sonos system")
             return False
         
         if room not in self.names:
-            logging.error("Room '{}' not available in the Sonos system".format(room))
+            self.logger.error("Room '{}' not available in the Sonos system".format(room))
             return False
         
         return True
@@ -81,7 +84,7 @@ class SonosInterface():
                 return self.speaker 
         except:
             if self.prepareRoom(room) is False:
-                logging.error("Cannot prepare room {}".format(room))
+                self.logger.error("Cannot prepare room {}".format(room))
                 return None
             
             # There was a problem: Redefine the speaker
@@ -92,7 +95,7 @@ class SonosInterface():
     def offsetStartPlaylist(self, playlistName):
         currentTime = time.time()
         if currentTime - self.timeLastStartPlaylist < self.minTimePlaylist:
-            logging.debug("Discarding command to start playlist {} (issued {} after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
+            self.logger.debug("Discarding command to start playlist {} (issued {} after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
             return True
         
         self.timeLastStartPlaylist = currentTime
@@ -125,18 +128,18 @@ class SonosInterface():
             self.playlistSize = self.queueSize - oldQueueSize
             sp.play_from_queue(self.indexBegPlaylist)
         except:
-            logging.error("Problem playing playlist '{}'".format(playlistName))
+            self.logger.error("Problem playing playlist '{}'".format(playlistName))
             return
 
     def playTrackNb(self, trackNb, room):
         if trackNb < 1:
-            logging.error("Cannot play track number {:d}".format(trackNb))
+            self.logger.error("Cannot play track number {:d}".format(trackNb))
             return 
         
         trackIndex = self.indexBegPlaylist + trackNb - 1
         
         if trackIndex >= self.queueSize:
-            logging.error("Track number {:d} too large (index: {:d}, playlist size: {:d})".format(trackNb, trackIndex, self.playlistSize))
+            self.logger.error("Track number {:d} too large (index: {:d}, playlist size: {:d})".format(trackNb, trackIndex, self.playlistSize))
             return
         
         try:
@@ -145,7 +148,7 @@ class SonosInterface():
             self.soundCheck(room)
             sp.play_from_queue(trackIndex)
         except:
-            logging.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
+            self.logger.error("Problem playing track number '{:d}' (track index: {:d}, queue size: {:d})".format(trackNb, trackIndex, self.queueSize))
             return    
 
     def togglePlayPause(self, room):
@@ -163,7 +166,7 @@ class SonosInterface():
             else:
                 sp.play()
         except:
-            logging.error("Problem toggling play/pause (current state: {})".format(currentState))
+            self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
 
     def skipToNext(self, room):
         try:
@@ -175,7 +178,7 @@ class SonosInterface():
             sp.next()
             self.cancelOffsetStartPlaylist = True
         except:
-            logging.error("Problem skipping to next song")
+            self.logger.error("Problem skipping to next song")
           
     def skipToPrevious(self, room):
         try:
@@ -187,7 +190,7 @@ class SonosInterface():
             sp.previous()
             self.cancelOffsetStartPlaylist = True
         except:
-            logging.error("Problem skipping to previous song")
+            self.logger.error("Problem skipping to previous song")
           
     def adjustVolume(self, volumeDelta, room):
         try:
@@ -200,16 +203,16 @@ class SonosInterface():
             
             # Enforce volume limits
             if newVol < self.minVolume:
-                logging.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
                 sp.volume = self.minVolume
             elif newVol > self.maxVolume:
-                logging.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
                 sp.volume = self.maxVolume
             else:
                 sp.volume += volumeDelta
             newVol = sp.volume
         except:
-            logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
+            self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
 
     def soundCheck(self, room):
         vol = -1
@@ -220,24 +223,33 @@ class SonosInterface():
             
             # Enforce volume limits
             if vol < self.minVolume:
-                logging.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
                 sp.volume = self.minVolume
             elif vol > self.maxVolume:
-                logging.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
                 sp.volume = self.maxVolume
             newVol = sp.volume
         except:
-            logging.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
+            self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
 
 if __name__ == '__main__':
     # Logging
-    logging.basicConfig(filename='sonosInterface.log', 
-                        level=logging.DEBUG, 
-                        format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
-                        datefmt='%Y-%m-%d %H:%M:%S')
+#    logging.basicConfig(filename='sonosInterface.log', 
+#                        level=logging.DEBUG, 
+#                        format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
+#                        datefmt='%Y-%m-%d %H:%M:%S')
+    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(pathname)s:%(lineno)d) %(message)s')
+    logFile = 'sonosInterface.log'
+    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
+                                     backupCount=2, encoding=None, delay=0)
+    logHandler.setFormatter(logFormatter)
+    logHandler.setLevel(logging.DEBUG)
+    logger = logging.getLogger('root')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logHandler)    
         
-    logging.info("Creating instance of SonosInterface") 
-    si = SonosInterface()
+    logger.info("Creating instance of SonosInterface") 
+    si = SonosInterface(logger)
     try:
         si.printSpeakerList()
         si.startPlaylist("zCharliebert_A01", "Office")
@@ -268,6 +280,6 @@ if __name__ == '__main__':
         sleep(5)
         si.adjustVolume(-10, "Office")
     except KeyboardInterrupt:
-        logging.info("Stop (Ctrl-C from __main__)") 
+        logger.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
         

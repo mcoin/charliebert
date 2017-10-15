@@ -5,28 +5,30 @@ import threading
 from time import sleep
 import time
 import logging
+from logging.handlers import RotatingFileHandler
 from distutils.cmd import Command
     
     
 class UserInterface:
     
-    def __init__(self):
-        logging.info("Initializing instance of UserInterface")
+    def __init__(self, logger):
+        self.logger = logger
+        self.logger.info("Initializing instance of UserInterface")
         
         # GPIO settings
         GPIO.setwarnings(True)
         GPIO.setmode(GPIO.BCM)
         
         # Switches
-        logging.debug("Setting up switches")
+        self.logger.debug("Setting up switches")
         self.initSwitches()
         
         # LEDs
-        logging.debug("Setting up LEDs")
+        self.logger.debug("Setting up LEDs")
         self.initLeds()
     
         # Rotary encoder
-        logging.debug("Setting up rotary encoder")
+        self.logger.debug("Setting up rotary encoder")
         self.initRotaryEncoder()
     
         self.stopper = None
@@ -196,7 +198,7 @@ class UserInterface:
             volumeDelta = self.newCounter * abs(self.newCounter)  # Decrease or increase volume 
             self.volume += volumeDelta
             
-            logging.debug("Volume change: {:d} (current volume: {:d})".format(volumeDelta, self.volume))
+            self.logger.debug("Volume change: {:d} (current volume: {:d})".format(volumeDelta, self.volume))
             print("Volume change: {:d}; newCounter: {:d}; volume = {:d}".format(volumeDelta, self.newCounter, self.volume))  # some test print
             if self.queue is not None:
                 try:
@@ -272,7 +274,7 @@ class UserInterface:
         
     # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
-        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
+        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
                                                                                channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
                                                                                "ON" if self.isShiftModeOn() else "OFF"))
@@ -301,7 +303,7 @@ class UserInterface:
         
     # Callback for bank switch 
     def callbackBankSwitch(self, channel):
-        logging.debug("Bank switch pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(channel, 
+        self.logger.debug("Bank switch pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
                                                                                "ON" if self.isShiftModeOn() else "OFF"))
         print("Edge detected on channel {:d} [Bank switch, alt. mode: {}, shift mode: {}]".format(channel, 
@@ -318,7 +320,7 @@ class UserInterface:
         
     # Callback for mode switch
     def callbackModeSwitch(self, channel):
-        logging.debug("Mode switch pressed (channel {:d})".format(channel))
+        self.logger.debug("Mode switch pressed (channel {:d})".format(channel))
         print("Edge detected on channel {:d} [Mode switch]".format(channel))
         
         self.activateAltMode()
@@ -329,7 +331,7 @@ class UserInterface:
         
      # Callback for switches (play/pause, skip forward/backward)
     def callbackControlSwitch(self, channel):
-        logging.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
+        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
                                                                                channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
                                                                                "ON" if self.isShiftModeOn() else "OFF"))
@@ -367,7 +369,7 @@ class UserInterface:
 
     # Start procedure to switch off the pi under certain conditions
     def initiateSwitchOff(self):
-        logging.debug("Initiating switch off (Key combination Mode + Back)") 
+        self.logger.debug("Initiating switch off (Key combination Mode + Back)") 
         # Take into account a second call before the first switch off procedure has completed
         try:
             if self.switchOffTimer.is_alive():
@@ -383,25 +385,25 @@ class UserInterface:
             self.switchOffTimer.start()
             self.switchOffCurrentNbOperations = self.nbOperations
         except:
-            logging.error("Problem initiating switch off")
+            self.logger.error("Problem initiating switch off")
         
     # If the conditions are fulfilled, switch off the pi
     def completeSwitchOff(self):
-        logging.debug("Attempting to complete switch off (Key combination Mode + Back)") 
+        self.logger.debug("Attempting to complete switch off (Key combination Mode + Back)") 
 
         # Make sure the number of operations has not changed since initiating the switch off procedure
         if self.nbOperations != self.switchOffCurrentNbOperations + 1 \
         and self.nbOperations != 1: # Case where self.nbOperations has been reset
-            logging.debug("Canceling switch off (Key combination Mode + Back): Other keys have been pressed in the meantime") 
+            self.logger.debug("Canceling switch off (Key combination Mode + Back): Other keys have been pressed in the meantime") 
             return
         
         # Make sure the key combination is still being pressed
         if GPIO.input(self.modePort) != GPIO.LOW or GPIO.input(self.backPort) != GPIO.LOW:
-            logging.debug("Canceling switch off (Key combination Mode + Back): Key combination no longer pressed") 
+            self.logger.debug("Canceling switch off (Key combination Mode + Back): Key combination no longer pressed") 
             return
         
         # All the conditions are fulfilled: Send switch off signal
-        logging.debug("Mode and Back pressed for {} seconds: Sending signal to shut down the pi".format(self.switchOffTimePeriod))
+        self.logger.debug("Mode and Back pressed for {} seconds: Sending signal to shut down the pi".format(self.switchOffTimePeriod))
 
         if self.queue is not None:
             try:
@@ -443,7 +445,7 @@ class UserInterface:
                     
     def run(self, stopper=None, queue=None, reset=None):
         try:
-            logging.info("Starting main loop")  
+            self.logger.info("Starting main loop")  
             self.stopper = stopper
             print("Reacting to interrupts from switches")
             self.queue = queue
@@ -459,7 +461,7 @@ class UserInterface:
                 self.processRotary()
 
                 if self.stopRequested:
-                    logging.debug("Requesting stop")
+                    self.logger.debug("Requesting stop")
                     break
 
                 if self.stopper is not None:
@@ -472,47 +474,56 @@ class UserInterface:
                 self.blinkLedsForShift()
  
         except KeyboardInterrupt:
-            logging.info("Stop (Ctrl-C from main loop)") 
+            self.logger.info("Stop (Ctrl-C from main loop)") 
             print("Stop (Ctrl-C)")
         finally:
             # clean up GPIO on exit  
-            logging.debug("Cleaning up GPIO")
+            self.logger.debug("Cleaning up GPIO")
             GPIO.cleanup()
-#            logging.debug("Canceling shutdown timer")
+#            self.logger.debug("Canceling shutdown timer")
 #            try:
 #                self.shutdownTimer.join()
 #            except:
 #                pass
-#            logging.debug("Canceling switch off timer")
+#            self.logger.debug("Canceling switch off timer")
 #            try:
 #                self.switchOffTimer.join()
 #            except:
 #                pass
 
-            logging.debug("Canceling switch off timer")
+            self.logger.debug("Canceling switch off timer")
             try:
                 self.switchOffTimer.cancel()
             except:
                 pass
-            logging.debug("Over.")
+            self.logger.debug("Over.")
             
-        logging.debug("Bye!")
+        self.logger.debug("Bye!")
 
     def requestStop(self):
         self.stopRequested = True
 
 if __name__ == '__main__':
     # Logging
-    logging.basicConfig(filename='userInterface.log', 
-                        level=logging.DEBUG, 
-                        format='%(asctime)s %(levelname)s:%(message)s', 
-                        datefmt='%Y-%m-%d %H:%M:%S')
-        
-    logging.info("Creating instance of UserInterface") 
-    ui = UserInterface()
+#    logging.basicConfig(filename='userInterface.log', 
+#                        level=logging.DEBUG, 
+#                        format='%(asctime)s %(levelname)s:%(message)s', 
+#                        datefmt='%Y-%m-%d %H:%M:%S')
+    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(pathname)s:%(lineno)d) %(message)s')
+    logFile = 'userInterface.log'
+    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
+                                     backupCount=2, encoding=None, delay=0)
+    logHandler.setFormatter(logFormatter)
+    logHandler.setLevel(logging.DEBUG)
+    logger = logging.getLogger('root')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logHandler)    
+
+    logger.info("Creating instance of UserInterface") 
+    ui = UserInterface(logger)
     try:
         ui.run()
     except KeyboardInterrupt:
-        logging.info("Stop (Ctrl-C from __main__)") 
+        logger.info("Stop (Ctrl-C from __main__)") 
         print("Stop (Ctrl-C) [from main]")
         ui.requestStop()

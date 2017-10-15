@@ -1,0 +1,10 @@
+*.log
+*.swp
+*.swn
+*.swo
+*.pyc
+__pycache__/
+charliebert_output
+charliebert_output_old
+charliebert_startups
+

@@ -14,20 +14,21 @@ from datetime import datetime
 
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, reset):
+    def __init__(self, stopper, q, reset, logger):
         super(UserInterfaceThread, self).__init__()
         self.stopper = stopper
         self.q = q
         self.reset = reset
-        self.ui = UserInterface()
+        self.logger = logger
+        self.ui = UserInterface(self.logger)
         
     def run(self):
-        logging.debug("UserInterfaceThread starting")
+        self.logger.debug("UserInterfaceThread starting")
         self.ui.run(self.stopper, self.q, self.reset)
-        logging.debug("UserInterfaceThread stopping")
+        self.logger.debug("UserInterfaceThread stopping")
 
 class SonosInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, shutdownPi):
+    def __init__(self, stopper, q, shutdownPi, logger):
         super(SonosInterfaceThread, self).__init__()
         self.stopper = stopper
         self.q = q
@@ -36,50 +37,51 @@ class SonosInterfaceThread(threading.Thread):
         self.network = "aantgr"
         self.playlistBasename = "zCharliebert"
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
-        self.si = SonosInterface()
         self.shutdownPi = shutdownPi
+        self.logger = logger
+        self.si = SonosInterface(self.logger)
         
     def run(self):
-        logging.debug("SonosInterfaceThread starting")
+        self.logger.debug("SonosInterfaceThread starting")
         try:
             while not self.stopper.is_set():
                 #time.sleep(1)
-                logging.debug("Sonos Interface: Waiting for a command to execute")
+                self.logger.debug("Sonos Interface: Waiting for a command to execute")
                 command = self.q.get()
                 if command is None:
                     break
-                logging.debug("Sonos Interface: Obtained command {}".format(command))
+                self.logger.debug("Sonos Interface: Obtained command {}".format(command))
                 self.q.task_done()
 
                 # Process commands using the following mini-parser: 'CMD [BANK] [VALUE]'
                 m = self.parser.match(command)
                 try:
                     if m.group(1) == "PLAY/PAUSE":
-                        logging.debug("Command PLAY/PAUSE")
+                        self.logger.debug("Command PLAY/PAUSE")
                         self.si.togglePlayPause(self.room)
                     elif m.group(1) == "FORWARD":
-                        logging.debug("Command FORWARD")
+                        self.logger.debug("Command FORWARD")
                         self.si.skipToNext(self.room)
                     elif m.group(1) == "BACK":
-                        logging.debug("Command BACK")
+                        self.logger.debug("Command BACK")
                         self.si.skipToPrevious(self.room)
                     elif m.group(1) == "PLAYLIST":
                         bank = m.group(3)
                         bankNb = int(m.group(5))
-                        logging.debug("Command PLAYLIST: {} {:d}".format(bank, bankNb))
+                        self.logger.debug("Command PLAYLIST: {} {:d}".format(bank, bankNb))
                         playlistName = "{0}_{1}{2:02d}".format(self.playlistBasename, bank, bankNb)
-                        logging.debug("Starting playlist {}".format(playlistName))
+                        self.logger.debug("Starting playlist {}".format(playlistName))
                         self.si.startPlaylist(playlistName, self.room)
                     elif m.group(1) == "TRACK":
                         trackNb = int(m.group(5))
-                        logging.debug("Command TRACK: {:d}".format(trackNb))
+                        self.logger.debug("Command TRACK: {:d}".format(trackNb))
                         self.si.playTrackNb(trackNb, self.room)
                     elif m.group(1) == "VOLUME":
                         volDelta = int(m.group(5))
-                        logging.debug("Command VOLUME: {:d}".format(volDelta))
+                        self.logger.debug("Command VOLUME: {:d}".format(volDelta))
                         self.si.adjustVolume(volDelta, self.room)
                     elif m.group(1) == "SHUTDOWN":
-                        logging.debug("Command SHUTDOWN")
+                        self.logger.debug("Command SHUTDOWN")
                         ## Hack to work around the need for a password when using sudo:
                         ## sudo chmod u+s /sbin/shutdown
                         ## (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
@@ -87,15 +89,15 @@ class SonosInterfaceThread(threading.Thread):
                         self.shutdownPi.set()
 
                         try:
-                            logging.debug("Setting stopper to stop charliebert before shutting down the pi " + \
+                            self.logger.debug("Setting stopper to stop charliebert before shutting down the pi " + \
                                           "(otherwise the shutdown thread will survive for the next startup)")
                             self.stopper.set()
                         except:
-                            logging.debug("Could not set stopper")
+                            self.logger.debug("Could not set stopper")
 
                     elif m.group(1) == "ROOM":
                         roomNb = int(m.group(5))
-                        logging.debug("Command ROOM: {:d}".format(roomNb))
+                        self.logger.debug("Command ROOM: {:d}".format(roomNb))
                         if roomNb == 1:
                             self.changeNetwork("aantgr")
                             self.room = "Bedroom"
@@ -121,15 +123,15 @@ class SonosInterfaceThread(threading.Thread):
                             self.changeNetwork("AP2")
                             self.room = "Obenauf"                                                                                                                                    
                         else:
-                            logging.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
+                            self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
                     else:
                        raise 
                 except:
-                    logging.error("Unrecognized command: '{}'".format(command))
+                    self.logger.error("Unrecognized command: '{}'".format(command))
                 
         except KeyboardInterrupt:
-            logging.debug("Sonos Interface stopped (Ctrl-C)")
-        logging.debug("SonosInterfaceThread stopping")
+            self.logger.debug("Sonos Interface stopped (Ctrl-C)")
+        self.logger.debug("SonosInterfaceThread stopping")
 
     def changeNetwork(self, network):
         if network == self.network:
@@ -158,7 +160,7 @@ class SonosInterfaceThread(threading.Thread):
         elif network == "AP2":
             os.system("wpa_cli select_network 1")
         else:
-            logging.error("Unknown network '{}'".format(network))
+            self.logger.error("Unknown network '{}'".format(network))
             return
         
         time.sleep(5)
@@ -168,40 +170,41 @@ class SonosInterfaceThread(threading.Thread):
 
 # Timer to trigger a shutdown after a given period of inactivity
 class ShutdownTimerThread(threading.Thread):
-    def __init__(self, stopper, reset, shutdownFlag, startTime):
+    def __init__(self, stopper, reset, shutdownFlag, startTime, logger):
         super(ShutdownTimerThread, self).__init__()
         self.stopper = stopper
         self.reset = reset
         self.shutdownFlag = shutdownFlag
         self.startTime = startTime
+        self.logger = logger
         #self.shutdownTimePeriod = 1800 # s
         self.shutdownTimePeriod = 120 # s
         
     def run(self):
-        logging.debug("ShutdownTimerThread starting")
+        self.logger.debug("ShutdownTimerThread starting")
         while not self.stopper.is_set():
             while not self.reset.wait(self.shutdownTimePeriod):
                 if not self.stopper.is_set():
-                    logging.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
-                    logging.debug("Original start time: {}".format(self.startTime))
+                    self.logger.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
+                    self.logger.debug("Original start time: {}".format(self.startTime))
                     self.shutdownFlag.set()
                     self.stopper.set()
                 
             if self.reset.is_set() and not self.stopper.is_set():
-                logging.debug("ShutdownTimerThread: Resetting the shutdown timer")
+                self.logger.debug("ShutdownTimerThread: Resetting the shutdown timer")
                 self.reset.clear()
 
-        logging.debug("ShutdownTimerThread stopping")
+        self.logger.debug("ShutdownTimerThread stopping")
         
 # Variant that does not rely on the "hardware" clock
 class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
-    def __init__(self, stopper, reset, shutdownFlag, startTime):
-        super(ShutdownTimerThreadWorkaround, self).__init__(stopper, reset, shutdownFlag, startTime)
+    def __init__(self, stopper, reset, shutdownFlag, startTime, logger):
+        super(ShutdownTimerThreadWorkaround, self).__init__(stopper, reset, shutdownFlag, startTime, logger)
         self.time = 0
         self.timeInterval = 5
         
     def run(self):
-        logging.debug("ShutdownTimerThreadWorkaround starting")
+        self.logger.debug("ShutdownTimerThreadWorkaround starting")
         while not self.stopper.is_set():
             self.reset.clear()
             while self.time < self.shutdownTimePeriod:
@@ -209,18 +212,18 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                 self.time += self.timeInterval
                 
                 if self.reset.is_set():
-                    logging.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
+                    self.logger.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
                     self.time = 0
                     break
                 
             if not self.reset.is_set():
-                logging.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
+                self.logger.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
                 self.shutdownFlag.set()
                 self.stopper.set()
                 
         
             
-def charliebert():
+def charliebert(logger):
     # State indicator
     stopper = threading.Event()
     # Queue for commands
@@ -229,26 +232,26 @@ def charliebert():
     shutdownPi = threading.Event()
     reset = threading.Event()
     startTime = "charliebert start: {}".format(datetime.now())
-    logging.debug("{}".format(startTime))
+    logger.debug("{}".format(startTime))
     
-    userInterfaceThread = UserInterfaceThread(stopper, q, reset)
-    sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi)
+    userInterfaceThread = UserInterfaceThread(stopper, q, reset, logger)
+    sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi, logger)
 
-    #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime)
-    shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime)
+    #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime, logger)
+    shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime, logger)
     
-    logging.debug("Starting userInterfaceThread thread")
+    logger.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()
-    logging.debug("Starting sonosInterfaceThread thread")
+    logger.debug("Starting sonosInterfaceThread thread")
     sonosInterfaceThread.start()
 
-    logging.debug("Starting shutdownTimerThread thread")
+    logger.debug("Starting shutdownTimerThread thread")
     shutdownTimerThread.start()
     
     # File acting as a switch for this application:
     switchFile = "CHARLIEBERT_STOP"
     if os.path.exists(switchFile):
-        logging.debug("Removing switch file CHARLIEBERT_STOP")
+        logger.debug("Removing switch file CHARLIEBERT_STOP")
         os.remove(switchFile)
     
             
@@ -257,12 +260,12 @@ def charliebert():
             pass
         
         if os.path.exists(switchFile):
-            logging.debug("Stop requested using the flag file '{}'".format(switchFile))
+            logger.debug("Stop requested using the flag file '{}'".format(switchFile))
             os.remove(switchFile)
 
            
     except KeyboardInterrupt:
-        logging.debug("Stop requested")
+        logger.debug("Stop requested")
         stopper.set() 
         reset.set() 
     
@@ -278,34 +281,34 @@ def charliebert():
         q.put(None)
         
     if shutdownPi.is_set():
-        logging.debug("Shutting down Pi now")
+        logger.debug("Shutting down Pi now")
         # Hack to work around the need for a password when using sudo:
         # sudo chmod u+s /sbin/shutdown
         # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
-        #logging.debug("/sbin/shutdown -h now")
+        #logger.debug("/sbin/shutdown -h now")
         os.system("/sbin/shutdown -h now")
             
 
 if __name__ == '__main__':
     # Logging
-    logging.basicConfig(filename='charliebert.log', 
-                         level=logging.DEBUG, 
-                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
-                         datefmt='%Y-%m-%d %H:%M:%S')
-#    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-#    logFile = 'charliebert.log'
-#    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
-#                                     backupCount=2, encoding=None, delay=0)
-#    logHandler.setFormatter(logFormatter)
-#    logHandler.setLevel(logging.DEBUG)
-#    logger = logging.getLogger('root')
-#    logger.setLevel(logging.DEBUG)
-#    logger.addHandler(logHandler)    
+#    logging.basicConfig(filename='charliebert.log', 
+#                         level=logging.DEBUG, 
+#                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
+#                         datefmt='%Y-%m-%d %H:%M:%S')
+    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(filename)s:%(lineno)d) %(message)s')
+    logFile = 'charliebert.log'
+    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
+                                     backupCount=2, encoding=None, delay=0)
+    logHandler.setFormatter(logFormatter)
+    logHandler.setLevel(logging.DEBUG)
+    logger = logging.getLogger('root')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logHandler)    
 
     logging.getLogger("soco").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-    logging.info("Starting charliebert")             
-    charliebert()
-    logging.info("Quitting charliebert")
+    logger.info("Starting charliebert")             
+    charliebert(logger)
+    logger.info("Quitting charliebert")
