@@ -5,6 +5,7 @@ try:
 except:
     import queue as Q # For python 3
 import logging
+from logging.handlers import RotatingFileHandler
 import re
 import os
 from userInterface import UserInterface
@@ -164,41 +165,8 @@ class SonosInterfaceThread(threading.Thread):
         
         self.network = network
         
-# # Function that sends a shutdown command after a period of inactivity
-# def sendShutdownSignal():
-#     logging.debug("No activity for {} seconds: Sending signal to shut down the pi".format(self.shutdownTimePeriod))
-#     logging.debug("   [Start time: {}]".format(self.startTime))
-# 
-#     if self.queue is not None:
-#         try:
-#             self.queue.put("SHUTDOWN")
-#         except:
-#             logging.debug("Problem while sending the shutdown signal")
-#         
-# # Reset the shutdown timer with each new key press
-# def setShutdownTimer(shutdownTimer, stopper):
-#     if stopper.is_set():
-#         logging.debug("Refusing to set a shutdown timer since we are quitting")
-#         return
-#     
-#     try:
-#         logging.debug("Starting timer to shut down the pi when inactive for {} seconds".format(self.shutdownTimePeriod))
-#         # Cancel current timer if applicable
-#         try:
-#             if shutdownTimer is None:
-#                 logging.debug("Setting the timer for the first time")
-#             else:
-#                 logging.debug("Resetting the timer")
-#                 shutdownTimer.cancel()
-#         except:
-#             pass
-#         # (Re)Start timer to monitor inactivity after the last key press
-#         shutdownTimer = threading.Timer(shutdownTimePeriod, sendShutdownSignal)
-#         shutdownTimer.setName("ShutdownTimer")
-#         shutdownTimer.start()
-#     except:
-#         logging.error("Problem encountered when trying to (re)set the shutdown timer")
-#             
+
+# Timer to trigger a shutdown after a given period of inactivity
 class ShutdownTimerThread(threading.Thread):
     def __init__(self, stopper, reset, shutdownFlag, startTime):
         super(ShutdownTimerThread, self).__init__()
@@ -283,14 +251,6 @@ def charliebert():
         logging.debug("Removing switch file CHARLIEBERT_STOP")
         os.remove(switchFile)
     
-#     # Timer to trigger a shutdown after a given period of inactivity
-#     #shutdownTimePeriod = 1800 # s
-#     shutdownTimePeriod = 600 # s
-#     shutdownTimer = None
-#     startTime = time.asctime( time.localtime(time.time()) )
-#     
-#     logging.info("Starting timer to monitor activity and shut down the pi after a given idle time") 
-#     setShutdownTimer(shutdownTimer, stopper)
             
     try:
         while not os.path.exists(switchFile) and not stopper.is_set():
@@ -312,11 +272,6 @@ def charliebert():
         if not reset.is_set():
             reset.set() 
             
-#         logging.debug("Canceling shutdown timer")
-#         try:
-#             self.shutdownTimer.cancel()
-#         except:
-#             pass
             
         while not q.empty():
             q.get()
@@ -333,10 +288,20 @@ def charliebert():
 
 if __name__ == '__main__':
     # Logging
-    logging.basicConfig(filename='charliebert.log', 
-                        level=logging.DEBUG, 
-                        format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
-                        datefmt='%Y-%m-%d %H:%M:%S')
+#     logging.basicConfig(filename='charliebert.log', 
+#                         level=logging.DEBUG, 
+#                         format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
+#                         datefmt='%Y-%m-%d %H:%M:%S')
+    logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+    logFile = 'charliebert.log'
+    logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
+                                     backupCount=2, encoding=None, delay=0)
+    logHandler.setFormatter(logFormatter)
+    logHandler.setLevel(logging.DEBUG)
+    logger = logging.getLogger('root')
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logHandler)    
+    
     logging.getLogger("soco").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
