@@ -1,0 +1,52 @@
+#! /bin/sh
+# /etc/init.d/charliebert
+
+### BEGIN INIT INFO
+# Provides:          charliebert
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Simple script to start charliebert at boot
+# Description:       A simple script which will start / stop 'python charliebert.py' at boot / shutdown.
+### END INIT INFO
+
+CHARLIEBERT_PATH=/home/toma/Documents/prog/charliebert/charliebert
+CHARLIEBERT_USER=toma
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+  start)
+#sleep 30
+#exit 0
+    echo "Starting charliebert"
+    rm $CHARLIEBERT_PATH/CHARLIEBERT_STOP 2>&1 > /dev/null
+    su - $CHARLIEBERT_USER -c " \
+      cd $CHARLIEBERT_PATH; \
+      mv charliebert_output charliebert_output_old; \
+      date >> charliebert_startups
+      ( sleep 10; /usr/bin/python charliebert.py 2>&1 > charliebert_output ) & \
+    "
+    ;;
+  stop)
+#exit 0
+    echo "Stopping charliebert"
+    # This unfortunately does not work (as SIGINT cannot be sent to a background process)
+    #/usr/bin/pkill --signal SIGINT -f "python charliebert.py"
+
+    # Brute-force approach
+    #/usr/bin/pkill --signal SIGTERM -f "python charliebert.py"
+
+    # Workaround with a local file used as killswitch
+    su - $CHARLIEBERT_USER -c " \
+      cd $CHARLIEBERT_PATH; \
+      touch CHARLIEBERT_STOP \
+    "
+    ;;
+  *)
+    echo "Usage: /etc/init.d/charliebert {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0

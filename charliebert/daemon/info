@@ -1,0 +1,3 @@
+sudo cp charliebert /etc/init.d/
+sudo chmod 755 /etc/init.d/charliebert
+sudo update-rc.d charliebert defaults
