@@ -17,19 +17,16 @@ CHARLIEBERT_USER=toma
 # Carry out specific functions when asked to by the system
 case "$1" in
   start)
-#sleep 30
-#exit 0
     echo "Starting charliebert"
-    rm $CHARLIEBERT_PATH/CHARLIEBERT_STOP 2>&1 > /dev/null
-    su - $CHARLIEBERT_USER -c " \
-      cd $CHARLIEBERT_PATH; \
-      mv charliebert_output charliebert_output_old; \
+    rm $CHARLIEBERT_PATH/CHARLIEBERT_STOP 2> /dev/null
+    su - $CHARLIEBERT_USER -c "
+      cd $CHARLIEBERT_PATH
+      mv charliebert_output charliebert_output_old
       date >> charliebert_startups
-      ( sleep 10; /usr/bin/python charliebert.py 2>&1 > charliebert_output ) & \
+      /usr/bin/python charliebert.py > charliebert_output 2> charliebert_error & echo $! > PID_CHARLIEBERT
     "
     ;;
   stop)
-#exit 0
     echo "Stopping charliebert"
     # This unfortunately does not work (as SIGINT cannot be sent to a background process)
     #/usr/bin/pkill --signal SIGINT -f "python charliebert.py"
@@ -38,13 +35,25 @@ case "$1" in
     #/usr/bin/pkill --signal SIGTERM -f "python charliebert.py"
 
     # Workaround with a local file used as killswitch
-    su - $CHARLIEBERT_USER -c " \
-      cd $CHARLIEBERT_PATH; \
-      touch CHARLIEBERT_STOP \
+    su - $CHARLIEBERT_USER -c "
+      cd $CHARLIEBERT_PATH
+      rm PID_CHARLIEBERT 2> /dev/null
+      touch CHARLIEBERT_STOP
+    "
+    ;;
+  status)
+    su - $CHARLIEBERT_USER -c "
+      cd $CHARLIEBERT_PATH
+      if [[ -e PID_CHARLIEBERT ]]
+      then
+        echo 'charliebert is running'
+      else
+        echo 'charliebert is not running'
+      fi
     "
     ;;
   *)
-    echo "Usage: /etc/init.d/charliebert {start|stop}"
+    echo "Usage: /etc/init.d/charliebert {start|stop|status}"
     exit 1
     ;;
 esac
