@@ -208,7 +208,8 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
         while not self.stopper.is_set():
             self.reset.clear()
             while self.time < self.shutdownTimePeriod:
-                time.sleep(self.timeInterval)
+                #time.sleep(self.timeInterval)
+                self.stopper.wait(self.timeInterval)
                 self.time += self.timeInterval
                 
                 if self.reset.is_set():
