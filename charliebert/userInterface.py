@@ -73,24 +73,24 @@ class UserInterface:
         self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOB'], 0xFF)
     
     def readMcp(self, reg):
-        self.logger.debug("readMcp for reg = {}".format(reg))
+        #self.logger.debug("readMcp for reg = {}".format(reg))
         if reg in self.mcpRegisterMap:
             try:
-                self.logger.debug("readMcp: reg = {} exists".format(reg))
+                #self.logger.debug("readMcp: reg = {} exists".format(reg))
                 return self.mcpBus.read_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap[reg])
             except:
-                self.logger.debug("readMcp: Cannot read data for reg = {}".format(reg))
+                #self.logger.debug("readMcp: Cannot read data for reg = {}".format(reg))
                 raise
         else:
-            self.logger.debug("readMcp: reg = {} does not exist".format(reg))
+            #self.logger.debug("readMcp: reg = {} does not exist".format(reg))
             raise
         
     def getActiveRoom(self):
-        self.logger.debug("getActiveRoom")
+        #self.logger.debug("getActiveRoom")
         try:
             sw = self.readMcp('GPIOB')
-            self.logger.debug("sw = {}".format(sw))
-            self.logger.debug("room = {}".format(self.roomMap[sw]))
+            #self.logger.debug("sw = {}".format(sw))
+            #self.logger.debug("room = {}".format(self.roomMap[sw]))
             return self.roomMap[sw]
         except:
             return "Unknown room"
@@ -163,7 +163,7 @@ class UserInterface:
             if name == self.bankSwitch:
                 GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackBankSwitch, bouncetime=500)
             elif name == self.modeSwitch:
-                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackModeSwitch, bouncetime=500)
+                GPIO.add_event_detect(port, GPIO.BOTH, callback=self.callbackModeSwitch, bouncetime=500)
             elif port in self.switchNbs:
                 GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=500)  
             else:
@@ -303,6 +303,13 @@ class UserInterface:
         return self.switchNbs[channel]
             
     # Mode switch
+    def toggleAltMode(self):
+        if not self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
+            self.logger.debug("Activating alt-mode")
+            self.activateAltMode()
+        else:
+            self.logger.debug("Deactivating alt-mode")
+            self.deactivateAltMode()
     def activateAltMode(self):
         self.altMode = True
         # Take note of the currently selected room
@@ -380,7 +387,7 @@ class UserInterface:
         self.logger.debug("Mode switch pressed (channel {:d})".format(channel))
         print("Edge detected on channel {:d} [Mode switch]".format(channel))
         
-        self.activateAltMode()
+        self.toggleAltMode()
         
         if self.reset is not None:
             self.reset.set()
