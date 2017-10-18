@@ -7,6 +7,7 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 from distutils.cmd import Command
+import smbus
     
     
 class UserInterface:
@@ -46,6 +47,45 @@ class UserInterface:
         self.blinking = False
         # Period for blinking leds (in seconds)
         self.blinkPeriod = 0.5
+        
+        # SMBUS stuff for additional ports via MCP23017 chip
+        self.initMcp()
+        
+    def initMcp(self):
+        self.mcpDeviceAddress = 0x20
+        self.mcpAddressMap = {
+    0x00: 'IODIRA', 0x01: 'IODIRB', 0x02: 'IPOLA', 0x03: 'IPOLB',
+    0x04: 'GPINTENA', 0x05: 'GPINTENB', 0x06: 'DEFVALA', 0x07: 'DEVFALB',
+    0x08: 'INTCONA', 0x09: 'INTCONB', 0x0a: 'IOCON', 0x0b: 'IOCON',
+    0x0c: 'GPPUA', 0x0d: 'GPPUB', 0x0e: 'INTFA', 0x0f: 'INTFB',
+    0x10: 'INTCAPA', 0x11: 'INTCAPB', 0x12: 'GPIOA', 0x13: 'GPIOB',
+    0x14: 'OLATA', 0x15: 'OLATB'}
+        self.mcpRegisterMap = {value: key for key, value in self.mcpAddressMap.iteritems()}
+        self.roomMap = {
+                        0xFB: 'room1', 0xF7: 'room2', 0xEF: 'room3', 0xDF: 'room4', 0xFE: 'room5', 0xFD: 'room6'
+                        }
+        
+        # Define device
+        self.mcpBus = smbus.SMBus(1)
+        # Set pullup resistors
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOA'], 0xFF)
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOB'], 0xFF)
+    
+    def readMcp(self, reg):
+        if reg in self.mcpRegisterMap.items():
+            try:
+                return self.mcpBus.read_byte_data(self.mcpDeviceAddress, reg)
+            except:
+                raise
+        else:
+            raise
+        
+    def getActiveRoom(self):
+        try:
+            sw = self.readMcp('GPIOB')
+            return self.roomMap[sw]
+        except:
+            return "Unknown room"
         
     
     def initSwitches(self):
@@ -257,11 +297,20 @@ class UserInterface:
     # Mode switch
     def activateAltMode(self):
         self.altMode = True
+        # Take note of the currently selected room
+        self.currentRoom = self.getActiveRoom()
+        self.logger.debug("Activating alt-mode: Current room is {}".format(self.currentRoom))
+    def deactivateAltMode(self):
+        self.altMode = False
+        # Check whether the active room has been changed:
+        curRoom = self.getActiveRoom()
+        if curRoom != self.currentRoom:
+            self.logger.debug("The current room has been changed to {} (used to be {})".format(curRoom, self.currentRoom))
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
             return True 
         else:
-            self.altMode = False
+            self.deactivateAltMode()
             return False
     def activateShiftMode(self):
         self.shiftMode = True
