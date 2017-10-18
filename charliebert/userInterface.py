@@ -50,6 +50,7 @@ class UserInterface:
         
         # SMBUS stuff for additional ports via MCP23017 chip
         self.initMcp()
+        self.currentRoom = None
         
     def initMcp(self):
         self.mcpDeviceAddress = 0x20
@@ -72,17 +73,24 @@ class UserInterface:
         self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOB'], 0xFF)
     
     def readMcp(self, reg):
-        if reg in self.mcpRegisterMap.items():
+        self.logger.debug("readMcp for reg = {}".format(reg))
+        if reg in self.mcpRegisterMap:
             try:
-                return self.mcpBus.read_byte_data(self.mcpDeviceAddress, reg)
+                self.logger.debug("readMcp: reg = {} exists".format(reg))
+                return self.mcpBus.read_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap[reg])
             except:
+                self.logger.debug("readMcp: Cannot read data for reg = {}".format(reg))
                 raise
         else:
+            self.logger.debug("readMcp: reg = {} does not exist".format(reg))
             raise
         
     def getActiveRoom(self):
+        self.logger.debug("getActiveRoom")
         try:
             sw = self.readMcp('GPIOB')
+            self.logger.debug("sw = {}".format(sw))
+            self.logger.debug("room = {}".format(self.roomMap[sw]))
             return self.roomMap[sw]
         except:
             return "Unknown room"
