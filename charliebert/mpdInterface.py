@@ -6,39 +6,53 @@ from time import sleep
 import time
 from cookielib import logger
 
-class McpInterface(PlayerInterface):
+class MpdInterface(PlayerInterface):
     def __init__(self, logger):
         # Logging mechanism
         self.logger = logger
         
         # Initialize PlayerInterface
-        super(SonosInterface, self).__init__(self.logger)
+        #super(MpdInterface, self).__init__(self.logger)
+        PlayerInterface.__init__(self, self.logger)
         
         # Initialize MCP client
         self.client = MPDClient()
         self.client.timeout = 10
         
+        # Limitations
+        self.minVolume = 20 # Make sure the music is audible...
+        self.maxVolume = 80 # ...but not painful
+		
         
     def connect(self): 
+        self.logger.debug("Connecting")
         try:
             try:
                 if self.connected:
+                    self.logger.debug("Already connected: Attempt disconnecting")
                     self.disconnect()
             except:
                 pass
                 
+            self.logger.debug("Attempt connecting")
             self.client.connect("localhost", 6600)
+            self.logger.debug("Connected")
             self.connected = True
         except:
+            self.logger.debug("Not connected")
             self.connected = False
             
     def disconnect(self):
+        self.logger.debug("Disconnecting")
         try:
+            self.logger.debug("Closing")
             self.client.close()
+            self.logger.debug("Disconnecting")
             self.client.disconnect()
         except:
              pass
          
+        self.logger.debug("Not connected")
         self.connected = False
 
     def prepareRoom(self, room):
@@ -53,8 +67,10 @@ class McpInterface(PlayerInterface):
         return True
         
     def startPlaylist(self, playlistName, room):
+        self.logger.debug("Starting playlist {}".format(playlistName))
         # Discard commands that are issued too briefly after the last
         if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
+            self.logger.debug("Aborting: Playlist already started not long ago")
             return
         
         self.connect()
@@ -66,15 +82,20 @@ class McpInterface(PlayerInterface):
             if playlistName == self.playlistName:
                 # Starting the same playlist again: Just start playing from the beginning again
                 # without appending the tracks to the queue once more
+                self.logger.debug("Playlist {} already active: Restarting from first song".format(playlistName))
                 client.play(0)
                 return        
             
+            self.logger.debug("Clearing playlist")
             self.client.clear()
+            self.logger.debug("Loading playlist")
             self.client.load(playlistName)
+            self.logger.debug("Starting playlist")
             self.client.play(0)
             
             self.playlistSize = len(self.client.playlistinfo())
             self.queueSize = self.playlistSize
+            self.logger.debug("Number of songs in the playlist: {:d}".format(self.playlistSize))
             
         except:
             self.logger.error("Problem playing playlist '{}'".format(playlistName))
@@ -83,6 +104,7 @@ class McpInterface(PlayerInterface):
         self.disconnect()
 
     def playTrackNb(self, trackNb, room):
+        self.logger.debug("Playing track {:d}".format(trackNb))
         if trackNb < 1:
             self.logger.error("Cannot play track number {:d}".format(trackNb))
             return 
@@ -99,6 +121,7 @@ class McpInterface(PlayerInterface):
             # Make sure we won't go deaf right now
             self.soundCheck(room)
             
+            self.logger.debug("Playing track with index {:d}".format(trackIndex))
             self.client.play(trackIndex)
 
         except:
@@ -108,6 +131,7 @@ class McpInterface(PlayerInterface):
         self.disconnect()
         
     def togglePlayPause(self, room):        
+        self.logger.debug("Toggling play/pause")
         self.connect()
         
         try:
@@ -118,9 +142,11 @@ class McpInterface(PlayerInterface):
             self.soundCheck(room)
             
             if currentState == 'play':
+                self.logger.debug("Pausing playback")
                 self.client.pause()
                 self.cancelOffsetStartPlaylist = True
             else:
+                self.logger.debug("Resuming playback")
                 self.client.play()
         except:
             self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
@@ -128,6 +154,7 @@ class McpInterface(PlayerInterface):
         self.disconnect()
         
     def skipToNext(self, room):
+        self.logger.debug("Skipping to next track")
         self.connect()
         
         try:
@@ -142,6 +169,7 @@ class McpInterface(PlayerInterface):
         self.disconnect()
                   
     def skipToPrevious(self, room):
+        self.logger.debug("Skipping to previous track")
         self.connect()
 
         try:
@@ -156,12 +184,14 @@ class McpInterface(PlayerInterface):
         self.disconnect()
           
     def adjustVolume(self, volumeDelta, room):
+        self.logger.debug("Adjusting volume")
         self.connect()
         
         try:
             oldVol = None
             newVol = None
             volumeDelta = int(round(volumeDelta))
+            volumeDelta *= 2
             
             oldVol = int(self.client.status()['volume'])
             newVol = oldVol + volumeDelta
@@ -174,6 +204,7 @@ class McpInterface(PlayerInterface):
                 self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
                 self.client.setvol(self.maxVolume)
             else:
+                self.logger.debug("Setting volume to {:d} [used to be {:d}]".format(newVol, oldVol))
                 self.client.setvol(newVol)
             newVol = int(self.client.status()['volume'])
         except:
@@ -182,8 +213,10 @@ class McpInterface(PlayerInterface):
         self.disconnect()
         
     def soundCheck(self, room):
-        self.connect()
-        
+        #self.connect()
+        if not self.connected:
+            return
+
         vol = -1
         newVol = -1
         try:
@@ -200,7 +233,7 @@ class McpInterface(PlayerInterface):
         except:
             self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
 
-        self.disconnect()
+        #self.disconnect()
         
 if __name__ == '__main__':
     # Logging
@@ -209,7 +242,7 @@ if __name__ == '__main__':
 #                        format='%(asctime)s %(name)s %(levelname)s:%(message)s', 
 #                        datefmt='%Y-%m-%d %H:%M:%S')
     logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(pathname)s:%(lineno)d) %(message)s')
-    logFile = 'sonosInterface.log'
+    logFile = 'mpdInterface.log'
     logHandler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
                                      backupCount=2, encoding=None, delay=0)
     logHandler.setFormatter(logFormatter)
@@ -218,8 +251,8 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logHandler)    
         
-    logger.info("Creating instance of McpInterface") 
-    mi = McpInterface(logger)
+    logger.info("Creating instance of MpdInterface") 
+    mi = MpdInterface(logger)
     try:
         mi.startPlaylist("zCharliebert_A01", "Office")
         sleep(5)

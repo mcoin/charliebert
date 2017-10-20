@@ -10,6 +10,7 @@ import re
 import os
 from userInterface import UserInterface
 from sonosInterface import SonosInterface
+from mpdInterface import MpdInterface
 from datetime import datetime
 
 
@@ -40,6 +41,9 @@ class SonosInterfaceThread(threading.Thread):
         self.shutdownPi = shutdownPi
         self.logger = logger
         self.si = SonosInterface(self.logger)
+        self.pi = self.si
+        self.player = "Sonos"
+        self.mi = MpdInterface(self.logger)
         
     def run(self):
         self.logger.debug("SonosInterfaceThread starting")
@@ -58,28 +62,28 @@ class SonosInterfaceThread(threading.Thread):
                 try:
                     if m.group(1) == "PLAY/PAUSE":
                         self.logger.debug("Command PLAY/PAUSE")
-                        self.si.togglePlayPause(self.room)
+                        self.pi.togglePlayPause(self.room)
                     elif m.group(1) == "FORWARD":
                         self.logger.debug("Command FORWARD")
-                        self.si.skipToNext(self.room)
+                        self.pi.skipToNext(self.room)
                     elif m.group(1) == "BACK":
                         self.logger.debug("Command BACK")
-                        self.si.skipToPrevious(self.room)
+                        self.pi.skipToPrevious(self.room)
                     elif m.group(1) == "PLAYLIST":
                         bank = m.group(3)
                         bankNb = int(m.group(5))
                         self.logger.debug("Command PLAYLIST: {} {:d}".format(bank, bankNb))
                         playlistName = "{0}_{1}{2:02d}".format(self.playlistBasename, bank, bankNb)
                         self.logger.debug("Starting playlist {}".format(playlistName))
-                        self.si.startPlaylist(playlistName, self.room)
+                        self.pi.startPlaylist(playlistName, self.room)
                     elif m.group(1) == "TRACK":
                         trackNb = int(m.group(5))
                         self.logger.debug("Command TRACK: {:d}".format(trackNb))
-                        self.si.playTrackNb(trackNb, self.room)
+                        self.pi.playTrackNb(trackNb, self.room)
                     elif m.group(1) == "VOLUME":
                         volDelta = int(m.group(5))
                         self.logger.debug("Command VOLUME: {:d}".format(volDelta))
-                        self.si.adjustVolume(volDelta, self.room)
+                        self.pi.adjustVolume(volDelta, self.room)
                     elif m.group(1) == "SHUTDOWN":
                         self.logger.debug("Command SHUTDOWN")
                         ## Hack to work around the need for a password when using sudo:
@@ -98,6 +102,19 @@ class SonosInterfaceThread(threading.Thread):
                     elif m.group(1) == "ROOM":
                         roomNb = int(m.group(5))
                         self.logger.debug("Command ROOM: {:d}".format(roomNb))
+
+
+                        if roomNb == 12:
+                            if self.player != "Mpd":
+                                self.player = "Mpd"
+                                self.logger.debug("Switching player to Sonos")
+                                self.pi = self.mi
+                        else:
+                            if self.player != "Sonos":
+                                self.player = "Sonos"
+                                self.logger.debug("Switching player to MPD")
+                                self.pi = self.si
+
                         if roomNb == 1:
                             self.changeNetwork("aantgr")
                             self.room = "Bedroom"
@@ -122,6 +139,9 @@ class SonosInterfaceThread(threading.Thread):
                         elif roomNb == 8:
                             self.changeNetwork("AP2")
                             self.room = "Obenauf"                                                                                                                                    
+                        elif roomNb == 12:
+                            self.room = "Charliebert"
+
                         else:
                             self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
                     else:

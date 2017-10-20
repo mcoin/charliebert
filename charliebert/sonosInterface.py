@@ -1,3 +1,4 @@
+from playerInterface import PlayerInterface
 import soco
 import logging
 from logging.handlers import RotatingFileHandler
