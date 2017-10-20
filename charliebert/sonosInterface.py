@@ -92,16 +92,6 @@ class SonosInterface(PlayerInterface):
             sp = self.speakers[room]
             
             return sp.group.coordinator
-
-    def offsetStartPlaylist(self, playlistName):
-        currentTime = time.time()
-        if currentTime - self.timeLastStartPlaylist < self.minTimePlaylist:
-            self.logger.debug("Discarding command to start playlist {} (issued {} after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
-            return True
-        
-        self.timeLastStartPlaylist = currentTime
-        self.cancelOffsetStartPlaylist = False
-        return False
         
     def startPlaylist(self, playlistName, room):
         # Discard commands that are issued too briefly after the last
@@ -111,14 +101,14 @@ class SonosInterface(PlayerInterface):
         try:
             sp = self.getSpeaker(room)
             
+            # Make sure we won't go deaf right now
+            self.soundCheck(room)
+            
             if playlistName == self.playlistName:
                 # Starting the same playlist again: Just start playing from the beginning again
                 # without appending the tracks to the queue once more
                 sp.play_from_queue(self.indexBegPlaylist)
                 return
-            
-            # Make sure we won't go deaf right now
-            self.soundCheck(room)
             
             playlist = sp.get_sonos_playlist_by_attr('title', playlistName)
             self.playlistName = playlistName

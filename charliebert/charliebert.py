@@ -198,7 +198,7 @@ class ShutdownTimerThread(threading.Thread):
         self.startTime = startTime
         self.logger = logger
         #self.shutdownTimePeriod = 1800 # s
-        self.shutdownTimePeriod = 120 # s
+        self.shutdownTimePeriod = 600 # s
         
     def run(self):
         self.logger.debug("ShutdownTimerThread starting")
