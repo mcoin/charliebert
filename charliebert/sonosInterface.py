@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 from time import sleep
 import time
 
-class SonosInterface():
+class SonosInterface(PlayerInterface):
     def __init__(self, logger):
         # Logging mechanism
         self.logger = logger
