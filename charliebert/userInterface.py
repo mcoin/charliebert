@@ -42,7 +42,10 @@ class UserInterface:
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
-        
+        # Control counters
+        self.switchOffCurrentNbOperations = 0
+        self.activateAltModeCurrentNbOperations = 0
+                
         # Indicator for shift mode: if true, blink all bank leds
         self.blinking = False
         # Period for blinking leds (in seconds)
@@ -51,6 +54,7 @@ class UserInterface:
         # SMBUS stuff for additional ports via MCP23017 chip
         self.initMcp()
         self.currentRoom = None
+
         
     def initMcp(self):
         self.mcpDeviceAddress = 0x20
@@ -315,18 +319,36 @@ class UserInterface:
         # Take note of the currently selected room
         self.currentRoom = self.getActiveRoom()
         self.logger.debug("Activating alt-mode: Current room is {}".format(self.currentRoom))
+        self.activateAltModeCurrentNbOperations = self.nbOperations
+        
     def deactivateAltMode(self):
         self.altMode = False
+
+        # Make sure the number of operations has not changed since activating alt=mode
+        # (in order to detect cases where releasing the mode switch has not been properly registered)
+        if self.nbOperations != self.activateAltModeCurrentNbOperations + 1 \
+        and self.nbOperations != 1: # Case where self.nbOperations has been reset
+            self.logger.debug("Discarding room change: Other keys pressed since activating alt-mode)")
+            return
+            
         # Check whether the active room has been changed:
         curRoom = self.getActiveRoom()
         if curRoom != self.currentRoom:
             self.logger.debug("The current room has been changed to {} (used to be {})".format(curRoom, self.currentRoom))
+            
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
             return True 
         else:
             self.deactivateAltMode()
             return False
+        
+    # Check that alt-mode is still active (to prevent quick releases of the mode switch 
+    # to go undetected) 
+    def checkAltMode(self):
+        if self.altMode and GPIO.input(self.modePort) != GPIO.LOW:
+            self.deactivateAltMode()
+        
     def activateShiftMode(self):
         self.shiftMode = True
         self.altMode = False
@@ -523,6 +545,8 @@ class UserInterface:
                                                     # and reset them
                                                     
                 self.processRotary()
+                
+                self.checkAltMode()
 
                 if self.stopRequested:
                     self.logger.debug("Requesting stop")
