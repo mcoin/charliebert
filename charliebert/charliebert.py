@@ -139,6 +139,9 @@ class SonosInterfaceThread(threading.Thread):
                         elif roomNb == 8:
                             self.changeNetwork("AP2")
                             self.room = "Obenauf"                                                                                                                                    
+                        elif roomNb == 10:
+                            self.changeNetwork("aapx")
+                            self.room = "none"                                                                                                                                    
                         elif roomNb == 12:
                             self.room = "Charliebert"
 
@@ -154,7 +157,9 @@ class SonosInterfaceThread(threading.Thread):
         self.logger.debug("SonosInterfaceThread stopping")
 
     def changeNetwork(self, network):
+        self.logger.debug("Changing network to '{}'".format(network))
         if network == self.network:
+            self.logger.error("Network '{}' is already the active network".format(network))
             return
         
         # The config file /etc/wpa_supplicant/wpa_supplicant.conf has to look like:
@@ -179,6 +184,8 @@ class SonosInterfaceThread(threading.Thread):
             os.system("wpa_cli select_network 0")
         elif network == "AP2":
             os.system("wpa_cli select_network 1")
+        elif network == "aapx":
+            os.system("wpa_cli select_network 2")
         else:
             self.logger.error("Unknown network '{}'".format(network))
             return
@@ -329,6 +336,11 @@ if __name__ == '__main__':
     logging.getLogger("soco").setLevel(logging.WARNING)
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+    # PID (for status)
+    pid = os.getpid()
+    with open("PID_CHARLIEBERT", "a") as pidFile:
+        pidFile.write("{:d}\n".format(pid))
 
     logger.info("Starting charliebert")             
     charliebert(logger)

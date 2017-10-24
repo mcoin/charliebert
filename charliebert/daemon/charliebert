@@ -23,7 +23,7 @@ case "$1" in
       cd $CHARLIEBERT_PATH
       mv charliebert_output charliebert_output_old
       date >> charliebert_startups
-      /usr/bin/python charliebert.py > charliebert_output 2> charliebert_error & echo $! > PID_CHARLIEBERT
+      /usr/bin/python charliebert.py > charliebert_output 2>&1 &
     "
     ;;
   stop)
@@ -37,14 +37,19 @@ case "$1" in
     # Workaround with a local file used as killswitch
     su - $CHARLIEBERT_USER -c "
       cd $CHARLIEBERT_PATH
-      rm PID_CHARLIEBERT 2> /dev/null
       touch CHARLIEBERT_STOP
     "
     ;;
   status)
     su - $CHARLIEBERT_USER -c "
       cd $CHARLIEBERT_PATH
+      running="0"
       if [[ -e PID_CHARLIEBERT ]]
+      then
+        running="1"
+      fi
+
+      if [[ $running = "1" ]]
       then
         echo 'charliebert is running'
       else
@@ -52,8 +57,12 @@ case "$1" in
       fi
     "
     ;;
+  restart)
+    $0 stop
+    $0 start
+    ;;
   *)
-    echo "Usage: /etc/init.d/charliebert {start|stop|status}"
+    echo "Usage: /etc/init.d/charliebert {start|stop|status|restart}"
     exit 1
     ;;
 esac
