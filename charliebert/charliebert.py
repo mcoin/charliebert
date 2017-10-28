@@ -12,15 +12,20 @@ from userInterface import UserInterface
 from sonosInterface import SonosInterface
 from mpdInterface import MpdInterface
 from datetime import datetime
+import configparser
 
+
+configFileName = 'charliebert.config'
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, reset, logger):
+    def __init__(self, stopper, q, reset, logger, config):
         super(UserInterfaceThread, self).__init__()
+        self.config = config
         self.stopper = stopper
         self.q = q
         self.reset = reset
         self.logger = logger
+
         self.ui = UserInterface(self.logger)
         
     def run(self):
@@ -28,25 +33,83 @@ class UserInterfaceThread(threading.Thread):
         self.ui.run(self.stopper, self.q, self.reset)
         self.logger.debug("UserInterfaceThread stopping")
 
-class SonosInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, shutdownPi, logger):
-        super(SonosInterfaceThread, self).__init__()
+class PlayerInterfaceThread(threading.Thread):
+    def __init__(self, stopper, q, shutdownPi, logger, config):
+        super(PlayerInterfaceThread, self).__init__()
+        self.config = config        
         self.stopper = stopper
         self.q = q
+        
+        self.availableRooms = ('Bedroom', 
+                               'Bathroom', 
+                               'Office', 
+                               'Kitchen', 
+                               'Living Room', 
+                               'Charlie\'s Room', 
+                               'Wohnzimmer', 
+                               'Obenauf',
+                               'Charliebert')
         self.room = "Office"
         #self.room = "Bedroom"
+        self.availableNetworks = ('aantgr', 'AP2')
         self.network = "aantgr"
+        self.availablePlaylistBasenames = "zCharliebert"
         self.playlistBasename = "zCharliebert"
+        self.availablePlayers = ('Sonos', 'Mpd')
+        self.player = "Sonos"
+        
+        self.readConfig()
+        
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
         self.shutdownPi = shutdownPi
         self.logger = logger
+
         self.si = SonosInterface(self.logger)
-        self.pi = self.si
-        self.player = "Sonos"
         self.mi = MpdInterface(self.logger)
-        
+
+        if self.player == 'Sonos':        
+            self.pi = self.si
+        else:
+            self.pi = self.mi
+
+    def readConfig(self):
+        try:
+            if self.config['PlayerInterface']['room'] in self.availableRooms:
+                self.room = self.config['PlayerInterface']['room']
+            else:
+                self.logger.error("Unrecognized room from config: {}".format(self.config['PlayerInterface']['room']))
+        except:
+            self.logger.error("Problem encountered when attempting to set room from config")
+            
+        try:
+            if self.config['PlayerInterface']['network'] is None:
+                self.logger.debug("No network defined in config")
+            else:
+                if self.config['PlayerInterface']['network'] in self.availableNetworks:
+                    self.network = self.config['PlayerInterface']['network']
+                else:
+                    self.logger.error("Unrecognized network from config: {}".format(self.config['PlayerInterface']['network']))
+        except:
+            self.logger.error("Problem encountered when attempting to set network from config")
+
+        try:
+            if self.config['PlayerInterface']['playlistBasename'] in self.availablePlaylistBasenames:
+                self.playlistBasename = self.config['PlayerInterface']['playlistBasename']
+            else:
+                self.logger.error("Unrecognized playlist basename from config: {}".format(self.config['PlayerInterface']['playlistBasename']))
+        except:
+            self.logger.error("Problem encountered when attempting to set playlist basename from config")
+
+        try:
+            if self.config['PlayerInterface']['player'] in self.availablePlayers:
+                self.player = self.config['PlayerInterface']['player']
+            else:
+                self.logger.error("Unrecognized player from config: {}".format(self.config['PlayerInterface']['player']))
+        except:
+            self.logger.error("Problem encountered when attempting to set player from config")
+                    
     def run(self):
-        self.logger.debug("SonosInterfaceThread starting")
+        self.logger.debug("PlayerInterfaceThread starting")
         try:
             while not self.stopper.is_set():
                 #time.sleep(1)
@@ -107,12 +170,12 @@ class SonosInterfaceThread(threading.Thread):
                         if roomNb == 12:
                             if self.player != "Mpd":
                                 self.player = "Mpd"
-                                self.logger.debug("Switching player to Sonos")
+                                self.logger.debug("Switching player to MPD")
                                 self.pi = self.mi
                         else:
                             if self.player != "Sonos":
                                 self.player = "Sonos"
-                                self.logger.debug("Switching player to MPD")
+                                self.logger.debug("Switching player to Sonos")
                                 self.pi = self.si
 
                         if roomNb == 1:
@@ -154,7 +217,7 @@ class SonosInterfaceThread(threading.Thread):
                 
         except KeyboardInterrupt:
             self.logger.debug("Sonos Interface stopped (Ctrl-C)")
-        self.logger.debug("SonosInterfaceThread stopping")
+        self.logger.debug("PlayerInterfaceThread stopping")
 
     def changeNetwork(self, network):
         self.logger.debug("Changing network to '{}'".format(network))
@@ -249,9 +312,35 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                 self.shutdownFlag.set()
                 self.stopper.set()
                 
+
+def initConfig(logger, config):
+    logger.debug("Setting initial config")
+    config['Settings'] = {'Setting1': '45',
+                      'Setting2': 'yes',
+                      'Setting3': '9'}
+    
+    config['PlayerInterface'] = {'room': 'Office',
+        'network': 'aantgr',
+        'playlistBasename': 'zCharliebert',
+        'player': 'sonos'}
+
+def loadConfig(logger, config):
+    logger.debug("Reading config from file")
+    try:
+        config.read(configFileName)
+    except:
+        logger.error("Failed to read config")
         
+def writeConfig(logger, config):
+    logger.debug("Writing config to file")
+    with open(configFileName, 'w') as configFile:
+        config.write(configFile)
+
             
-def charliebert(logger):
+def charliebert(logger, config):
+    # Get configuration from config file if present
+    loadConfig(logger, config)
+    
     # State indicator
     stopper = threading.Event()
     # Queue for commands
@@ -262,16 +351,16 @@ def charliebert(logger):
     startTime = "charliebert start: {}".format(datetime.now())
     logger.debug("{}".format(startTime))
     
-    userInterfaceThread = UserInterfaceThread(stopper, q, reset, logger)
-    sonosInterfaceThread = SonosInterfaceThread(stopper, q, shutdownPi, logger)
+    userInterfaceThread = UserInterfaceThread(stopper, q, reset, logger, config)
+    playerInterfaceThread = PlayerInterfaceThread(stopper, q, shutdownPi, logger, config)
 
     #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime, logger)
     shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime, logger)
     
     logger.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()
-    logger.debug("Starting sonosInterfaceThread thread")
-    sonosInterfaceThread.start()
+    logger.debug("Starting playerInterfaceThread thread")
+    playerInterfaceThread.start()
 
     logger.debug("Starting shutdownTimerThread thread")
     shutdownTimerThread.start()
@@ -308,6 +397,9 @@ def charliebert(logger):
             q.get()
         q.put(None)
         
+        # Write configuration to disk when exiting the program
+        writeConfig(config)
+        
     if shutdownPi.is_set():
         logger.debug("Shutting down Pi now")
         # Hack to work around the need for a password when using sudo:
@@ -342,6 +434,9 @@ if __name__ == '__main__':
     with open("PID_CHARLIEBERT", "a") as pidFile:
         pidFile.write("{:d}\n".format(pid))
 
+    config = configparser.ConfigParser()
+    initConfig(logger, config)
+    
     logger.info("Starting charliebert")             
-    charliebert(logger)
+    charliebert(logger, config)
     logger.info("Quitting charliebert")
