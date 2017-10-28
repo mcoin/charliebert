@@ -12,7 +12,10 @@ from userInterface import UserInterface
 from sonosInterface import SonosInterface
 from mpdInterface import MpdInterface
 from datetime import datetime
-import configparser
+try:
+    import ConfigParser as configparser # For python 2
+except:
+    import configparser # For python 3
 
 
 configFileName = 'charliebert.config'
@@ -37,6 +40,7 @@ class PlayerInterfaceThread(threading.Thread):
     def __init__(self, stopper, q, shutdownPi, logger, config):
         super(PlayerInterfaceThread, self).__init__()
         self.config = config        
+        self.logger = logger
         self.stopper = stopper
         self.q = q
         
@@ -62,7 +66,6 @@ class PlayerInterfaceThread(threading.Thread):
         
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
         self.shutdownPi = shutdownPi
-        self.logger = logger
 
         self.si = SonosInterface(self.logger)
         self.mi = MpdInterface(self.logger)
@@ -74,40 +77,54 @@ class PlayerInterfaceThread(threading.Thread):
 
     def readConfig(self):
         try:
-            if self.config['PlayerInterface']['room'] in self.availableRooms:
-                self.room = self.config['PlayerInterface']['room']
+            cfgRoom = config.get('PlayerInterface', 'room')
+            if cfgRoom in self.availableRooms:
+                self.room = cfgRoom
             else:
-                self.logger.error("Unrecognized room from config: {}".format(self.config['PlayerInterface']['room']))
+                self.logger.error("Unrecognized room from config: {}".format(cfgRoom))
         except:
             self.logger.error("Problem encountered when attempting to set room from config")
             
         try:
-            if self.config['PlayerInterface']['network'] is None:
+            cfgNetwork = config.get('PlayerInterface', 'network')
+            if cfgNetwork is None:
                 self.logger.debug("No network defined in config")
             else:
-                if self.config['PlayerInterface']['network'] in self.availableNetworks:
-                    self.network = self.config['PlayerInterface']['network']
+                if cfgNetwork in self.availableNetworks:
+                    self.network = cfgNetwork
                 else:
-                    self.logger.error("Unrecognized network from config: {}".format(self.config['PlayerInterface']['network']))
+                    self.logger.error("Unrecognized network from config: {}".format(cfgNetwork))
         except:
             self.logger.error("Problem encountered when attempting to set network from config")
 
         try:
-            if self.config['PlayerInterface']['playlistBasename'] in self.availablePlaylistBasenames:
-                self.playlistBasename = self.config['PlayerInterface']['playlistBasename']
+            cfgPlaylistBasename = config.get('PlayerInterface', 'playlistBasename')
+            if cfgPlaylistBasename in self.availablePlaylistBasenames:
+                self.playlistBasename = cfgPlaylistBasename
             else:
-                self.logger.error("Unrecognized playlist basename from config: {}".format(self.config['PlayerInterface']['playlistBasename']))
+                self.logger.error("Unrecognized playlist basename from config: {}".format(cfgPlaylistBasename))
         except:
             self.logger.error("Problem encountered when attempting to set playlist basename from config")
 
         try:
-            if self.config['PlayerInterface']['player'] in self.availablePlayers:
-                self.player = self.config['PlayerInterface']['player']
+            cfgPlayer = config.get('PlayerInterface', 'player')
+            if cfgPlayer in self.availablePlayers:
+                self.player = cfgPlayer
             else:
-                self.logger.error("Unrecognized player from config: {}".format(self.config['PlayerInterface']['player']))
+                self.logger.error("Unrecognized player from config: {}".format(cfgPlayer))
         except:
             self.logger.error("Problem encountered when attempting to set player from config")
                     
+    def saveConfig(self):
+        self.logger.debug("Saving current configuration of the player interface")
+        try:
+            config.set('PlayerInterface', 'room', self.room)
+            config.set('PlayerInterface', 'network', self.network)
+            config.set('PlayerInterface', 'playlistBasename', self.playlistBasename)
+            config.set('PlayerInterface', 'player', self.player)
+        except:
+            self.logger.debug("Error encountered while Saving current configuration of the player interface")
+
     def run(self):
         self.logger.debug("PlayerInterfaceThread starting")
         try:
@@ -219,6 +236,9 @@ class PlayerInterfaceThread(threading.Thread):
             self.logger.debug("Sonos Interface stopped (Ctrl-C)")
         self.logger.debug("PlayerInterfaceThread stopping")
 
+        # Save config before quitting
+        self.saveConfig()
+
     def changeNetwork(self, network):
         self.logger.debug("Changing network to '{}'".format(network))
         if network == self.network:
@@ -315,14 +335,11 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
 
 def initConfig(logger, config):
     logger.debug("Setting initial config")
-    config['Settings'] = {'Setting1': '45',
-                      'Setting2': 'yes',
-                      'Setting3': '9'}
-    
-    config['PlayerInterface'] = {'room': 'Office',
-        'network': 'aantgr',
-        'playlistBasename': 'zCharliebert',
-        'player': 'sonos'}
+    config.add_section('PlayerInterface')
+    config.set('PlayerInterface', 'room', 'Office')
+    config.set('PlayerInterface', 'network', 'aantgr')
+    config.set('PlayerInterface', 'playlistBasename', 'zCharliebert')
+    config.set('PlayerInterface', 'player', 'sonos')
 
 def loadConfig(logger, config):
     logger.debug("Reading config from file")
@@ -398,7 +415,7 @@ def charliebert(logger, config):
         q.put(None)
         
         # Write configuration to disk when exiting the program
-        writeConfig(config)
+        writeConfig(logger, config)
         
     if shutdownPi.is_set():
         logger.debug("Shutting down Pi now")
