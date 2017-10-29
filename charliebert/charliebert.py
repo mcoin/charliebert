@@ -238,6 +238,10 @@ class PlayerInterfaceThread(threading.Thread):
 
         # Save config before quitting
         self.saveConfig()
+        
+    # Returns True in case the currently selected player is currently playing
+    def isCurrentlyPlaying(self):
+        return self.pi.isCurrentlyPlaying(self.room)
 
     def changeNetwork(self, network):
         self.logger.debug("Changing network to '{}'".format(network))
@@ -280,7 +284,7 @@ class PlayerInterfaceThread(threading.Thread):
 
 # Timer to trigger a shutdown after a given period of inactivity
 class ShutdownTimerThread(threading.Thread):
-    def __init__(self, stopper, reset, shutdownFlag, startTime, logger):
+    def __init__(self, stopper, reset, shutdownFlag, startTime, playerInterfaceThread, logger):
         super(ShutdownTimerThread, self).__init__()
         self.stopper = stopper
         self.reset = reset
@@ -294,7 +298,10 @@ class ShutdownTimerThread(threading.Thread):
         self.logger.debug("ShutdownTimerThread starting")
         while not self.stopper.is_set():
             while not self.reset.wait(self.shutdownTimePeriod):
-                if not self.stopper.is_set():
+                if self.isCurrentlyPlaying():
+                    self.logger.debug("ShutdownTimerThread: Canceling reset since music is currently playing")
+                    self.reset.set()
+                elif not self.stopper.is_set():
                     self.logger.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
                     self.logger.debug("Original start time: {}".format(self.startTime))
                     self.shutdownFlag.set()
@@ -306,10 +313,14 @@ class ShutdownTimerThread(threading.Thread):
 
         self.logger.debug("ShutdownTimerThread stopping")
         
+    # Returns True in case the currently selected player is currently playing
+    def isCurrentlyPlaying(self):
+        return playerInterfaceThread.isCurrentlyPlaying()
+        
 # Variant that does not rely on the "hardware" clock
 class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
-    def __init__(self, stopper, reset, shutdownFlag, startTime, logger):
-        super(ShutdownTimerThreadWorkaround, self).__init__(stopper, reset, shutdownFlag, startTime, logger)
+    def __init__(self, stopper, reset, shutdownFlag, startTime, playerInterfaceThread, logger):
+        super(ShutdownTimerThreadWorkaround, self).__init__(stopper, reset, shutdownFlag, startTime, playerInterfaceThread, logger)
         self.time = 0
         self.timeInterval = 5
         
@@ -318,7 +329,6 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
         while not self.stopper.is_set():
             self.reset.clear()
             while self.time < self.shutdownTimePeriod:
-                #time.sleep(self.timeInterval)
                 self.stopper.wait(self.timeInterval)
                 self.time += self.timeInterval
                 
@@ -327,7 +337,9 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                     self.time = 0
                     break
                 
-            if not self.reset.is_set():
+            if self.isCurrentlyPlaying():
+                self.logger.debug("ShutdownTimerThreadWorkaround: Canceling reset since music is currently playing")
+            elif not self.reset.is_set():
                 self.logger.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
                 self.shutdownFlag.set()
                 self.stopper.set()
@@ -371,8 +383,8 @@ def charliebert(logger, config):
     userInterfaceThread = UserInterfaceThread(stopper, q, reset, logger, config)
     playerInterfaceThread = PlayerInterfaceThread(stopper, q, shutdownPi, logger, config)
 
-    #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime, logger)
-    shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime, logger)
+    #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime, playerInterfaceThread, logger)
+    shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime, playerInterfaceThread, logger)
     
     logger.debug("Starting userInterfaceThread thread")
     userInterfaceThread.start()

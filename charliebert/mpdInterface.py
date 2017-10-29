@@ -234,7 +234,36 @@ class MpdInterface(PlayerInterface):
             self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
 
         #self.disconnect()
+
+    def isCurrentlyPlaying(self, room):
+        try:
+            currentState = None
+            sp = self.getSpeaker(room)
+            currentState = sp.get_current_transport_info()[u'current_transport_state']
+            
+            return currentState == 'PLAYING'
         
+        except:
+            self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
+            return False
+        
+        self.logger.debug("Returning play status")
+        self.connect()
+        
+        try:
+            currentState = None
+            currentState = self.client.status()['state']
+            
+            isCurrentlyPlaying = currentState == 'play'
+        except:
+            self.logger.error("Problem determining play status (current state: {})".format(currentState))
+            isCurrentlyPlaying = False
+        
+        self.disconnect()
+        
+        return isCurrentlyPlaying
+    
+                
 if __name__ == '__main__':
     # Logging
 #    logging.basicConfig(filename='sonosInterface.log', 

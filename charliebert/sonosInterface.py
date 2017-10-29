@@ -223,6 +223,19 @@ class SonosInterface(PlayerInterface):
         except:
             self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
 
+    def isCurrentlyPlaying(self, room):
+        try:
+            currentState = None
+            sp = self.getSpeaker(room)
+            currentState = sp.get_current_transport_info()[u'current_transport_state']
+            
+            return currentState == 'PLAYING'
+        
+        except:
+            self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
+            return False
+            
+            
 if __name__ == '__main__':
     # Logging
 #    logging.basicConfig(filename='sonosInterface.log', 

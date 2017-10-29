@@ -92,6 +92,11 @@ class PlayerInterface():
         vol = -1
         newVol = -1
 
+    # Returns True in case the currently selected player is currently playing
+    def isCurrentlyPlaying(self, room):
+        self.logger.debug("isCurrentlyPlaying")
+        return False
+
 if __name__ == '__main__':
     # Logging
     logFormatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(pathname)s:%(lineno)d) %(message)s')
