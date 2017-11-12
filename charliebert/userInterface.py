@@ -100,7 +100,8 @@ class UserInterface:
             #self.logger.debug("room = {}".format(self.roomNbMap[sw]))
             return self.roomNbMap[sw]
         except:
-            return "<Unknown room>"
+            self.logger.error("Error while determining the room number")
+            return 0
         
     
     def initSwitches(self):
@@ -338,7 +339,10 @@ class UserInterface:
         curRoomNb = self.getActiveRoomNb()
         if curRoomNb != self.currentRoomNb:
             self.logger.debug("The current room number has been changed to {:d} (used to be {:d})".format(curRoomNb, self.currentRoomNb))
-            self.queue.put("ROOM {:d}".format(curRoomNb))
+            if curRoomNb == 0 or self.currentRoomNb == 0:
+                self.logger.error("Wrong room number, skipping command (curRoomNb = {}, self.currentRoomNb = {})".format(curRoomNb, self.currentRoomNb))
+            else:
+                self.queue.put("ROOM {:d}".format(curRoomNb))
             
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:

@@ -290,9 +290,11 @@ class ShutdownTimerThread(threading.Thread):
         self.reset = reset
         self.shutdownFlag = shutdownFlag
         self.startTime = startTime
+        self.playerInterfaceThread = playerInterfaceThread
         self.logger = logger
         #self.shutdownTimePeriod = 1800 # s
         self.shutdownTimePeriod = 600 # s
+        #self.shutdownTimePeriod = 60 # s
         
     def run(self):
         self.logger.debug("ShutdownTimerThread starting")
@@ -316,7 +318,7 @@ class ShutdownTimerThread(threading.Thread):
     # Returns True in case the currently selected player is currently playing
     def isCurrentlyPlaying(self):
         self.logger.debug("ShutdownTimerThread Finding out whether music is still playing")
-        return playerInterfaceThread.isCurrentlyPlaying()
+        return self.playerInterfaceThread.isCurrentlyPlaying()
         
 # Variant that does not rely on the "hardware" clock
 class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
@@ -329,6 +331,7 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
         self.logger.debug("ShutdownTimerThreadWorkaround starting")
         while not self.stopper.is_set():
             self.reset.clear()
+            self.time = 0
             while self.time < self.shutdownTimePeriod:
                 self.stopper.wait(self.timeInterval)
                 self.time += self.timeInterval
@@ -339,7 +342,6 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                 
                 if self.reset.is_set():
                     self.logger.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
-                    self.time = 0
                     break
             
             # Exit right away if stop is requested
