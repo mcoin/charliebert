@@ -117,6 +117,7 @@ class PlayerInterfaceThread(threading.Thread):
                     
     def saveConfig(self):
         self.logger.debug("Saving current configuration of the player interface")
+        self.logger.debug("Current room: {}".format(self.room))
         try:
             config.set('PlayerInterface', 'room', self.room)
             config.set('PlayerInterface', 'network', self.network)
@@ -130,11 +131,11 @@ class PlayerInterfaceThread(threading.Thread):
         try:
             while not self.stopper.is_set():
                 #time.sleep(1)
-                self.logger.debug("Sonos Interface: Waiting for a command to execute")
+                self.logger.debug("Player Interface: Waiting for a command to execute")
                 command = self.q.get()
                 if command is None:
                     break
-                self.logger.debug("Sonos Interface: Obtained command {}".format(command))
+                self.logger.debug("Player Interface: Obtained command {}".format(command))
                 self.q.task_done()
 
                 # Process commands using the following mini-parser: 'CMD [BANK] [VALUE]'
@@ -227,13 +228,15 @@ class PlayerInterfaceThread(threading.Thread):
 
                         else:
                             self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
+
+                        self.logger.debug("Current room: {}".format(self.room))
                     else:
                        raise 
                 except:
                     self.logger.error("Unrecognized command: '{}'".format(command))
                 
         except KeyboardInterrupt:
-            self.logger.debug("Sonos Interface stopped (Ctrl-C)")
+            self.logger.debug("Player Interface stopped (Ctrl-C)")
         self.logger.debug("PlayerInterfaceThread stopping")
 
         # Save config before quitting
@@ -294,7 +297,7 @@ class ShutdownTimerThread(threading.Thread):
         self.logger = logger
         #self.shutdownTimePeriod = 1800 # s
         self.shutdownTimePeriod = 600 # s
-        #self.shutdownTimePeriod = 60 # s
+        #self.shutdownTimePeriod = 10 # s
         self.maxNbCanceledShutdowns = 3 # After N canceled attempts at shutting down (music still playing), do shut down anyhow
         self.nbCanceledShutdowns = 0 
         
@@ -302,7 +305,7 @@ class ShutdownTimerThread(threading.Thread):
         self.logger.debug("ShutdownTimerThread starting")
         while not self.stopper.is_set():
             while not self.reset.wait(self.shutdownTimePeriod):
-                if self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns:
+                if self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns - 1:
                     self.logger.debug("ShutdownTimerThread: Canceling reset since music is currently playing")
                     self.reset.clear()
                     self.nbCanceledShutdowns += 1
@@ -355,7 +358,7 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
             if self.reset.is_set():
                 # Just restart the loop
                 self.nbCanceledShutdowns = 0
-            elif self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns:
+            elif self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns - 1:
                 # Do not shut down the Pi as we are still playing music
                 self.logger.debug("ShutdownTimerThreadWorkaround: Canceling shutdown since music is currently playing")
                 self.nbCanceledShutdowns += 1
@@ -448,7 +451,10 @@ def charliebert(logger, config):
             q.get()
         q.put(None)
         
+
         # Write configuration to disk when exiting the program
+        playerInterfaceThread.saveConfig() # Explicit call (redundant) to ensure the config has been saved before it is written 
+                                           # (the other call occurs typically right after writeConfig()...)
         writeConfig(logger, config)
         
     if shutdownPi.is_set():

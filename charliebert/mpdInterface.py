@@ -236,17 +236,6 @@ class MpdInterface(PlayerInterface):
         #self.disconnect()
 
     def isCurrentlyPlaying(self, room):
-        try:
-            currentState = None
-            sp = self.getSpeaker(room)
-            currentState = sp.get_current_transport_info()[u'current_transport_state']
-            
-            return currentState == 'PLAYING'
-        
-        except:
-            self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
-            return False
-        
         self.logger.debug("Returning play status")
         self.connect()
         
