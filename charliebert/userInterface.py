@@ -73,8 +73,11 @@ class UserInterface:
         # Define device
         self.mcpBus = smbus.SMBus(1)
         # Set pullup resistors
-        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOA'], 0xFF)
-        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOB'], 0xFF)
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPPUA'], 0xFF)
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPPUB'], 0xFF)
+        # Set direction (input) 
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['IODIRA'], 0xFF)
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['IODIRB'], 0xFF)
     
     def readMcp(self, reg):
         #self.logger.debug("readMcp for reg = {}".format(reg))

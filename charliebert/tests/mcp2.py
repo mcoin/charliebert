@@ -21,10 +21,12 @@ def print_values(bus):
         print "%-*s = 0x%02X" % (max_len, address_map[addr], value)
 
 bus = smbus.SMBus(1)
-#bus.write_byte_data(DEVICE, register_map['GPPUA'], 0xFF)
-#bus.write_byte_data(DEVICE, register_map['GPPUB'], 0xFF)
-bus.write_byte_data(DEVICE, register_map['GPIOA'], 0xFF)
-bus.write_byte_data(DEVICE, register_map['GPIOB'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['GPPUA'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['GPPUB'], 0xFF)
+#bus.write_byte_data(DEVICE, register_map['GPIOA'], 0xFF)
+#bus.write_byte_data(DEVICE, register_map['GPIOB'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['IODIRA'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['IODIRB'], 0xFF)
 
 counter = 0
 try:
