@@ -295,14 +295,17 @@ class ShutdownTimerThread(threading.Thread):
         #self.shutdownTimePeriod = 1800 # s
         self.shutdownTimePeriod = 600 # s
         #self.shutdownTimePeriod = 60 # s
+        self.maxNbCanceledShutdowns = 3 # After N canceled attempts at shutting down (music still playing), do shut down anyhow
+        self.nbCanceledShutdowns = 0 
         
     def run(self):
         self.logger.debug("ShutdownTimerThread starting")
         while not self.stopper.is_set():
             while not self.reset.wait(self.shutdownTimePeriod):
-                if self.isCurrentlyPlaying():
+                if self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns:
                     self.logger.debug("ShutdownTimerThread: Canceling reset since music is currently playing")
-                    self.reset.set()
+                    self.reset.clear()
+                    self.nbCanceledShutdowns += 1
                 elif not self.stopper.is_set():
                     self.logger.debug("ShutdownTimerThread: Setting flag to shut down the Pi")
                     self.logger.debug("Original start time: {}".format(self.startTime))
@@ -312,7 +315,8 @@ class ShutdownTimerThread(threading.Thread):
             if self.reset.is_set() and not self.stopper.is_set():
                 self.logger.debug("ShutdownTimerThread: Resetting the shutdown timer")
                 self.reset.clear()
-
+                self.nbCanceledShutdowns = 0
+            
         self.logger.debug("ShutdownTimerThread stopping")
         
     # Returns True in case the currently selected player is currently playing
@@ -350,10 +354,12 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                     
             if self.reset.is_set():
                 # Just restart the loop
-                pass
-            elif self.isCurrentlyPlaying():
+                self.nbCanceledShutdowns = 0
+            elif self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns:
                 # Do not shut down the Pi as we are still playing music
                 self.logger.debug("ShutdownTimerThreadWorkaround: Canceling shutdown since music is currently playing")
+                self.nbCanceledShutdowns += 1
+                self.logger.debug("ShutdownTimerThreadWorkaround: Nb of canceled shutdowns = {:d}".format(self.nbCanceledShutdowns))
             else:
                 # Music is no longer playing and we had no sign of activity for a while: Shut down the Pi
                 self.logger.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
