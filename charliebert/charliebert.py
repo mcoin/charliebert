@@ -315,6 +315,7 @@ class ShutdownTimerThread(threading.Thread):
         
     # Returns True in case the currently selected player is currently playing
     def isCurrentlyPlaying(self):
+        self.logger.debug("ShutdownTimerThread Finding out whether music is still playing")
         return playerInterfaceThread.isCurrentlyPlaying()
         
 # Variant that does not rely on the "hardware" clock
@@ -332,14 +333,27 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
                 self.stopper.wait(self.timeInterval)
                 self.time += self.timeInterval
                 
+                # Exit right away if stop is requested
+                if self.stopper.is_set():
+                    break
+                
                 if self.reset.is_set():
                     self.logger.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
                     self.time = 0
                     break
-                
-            if self.isCurrentlyPlaying():
-                self.logger.debug("ShutdownTimerThreadWorkaround: Canceling reset since music is currently playing")
-            elif not self.reset.is_set():
+            
+            # Exit right away if stop is requested
+            if self.stopper.is_set():
+                    break
+                    
+            if self.reset.is_set():
+                # Just restart the loop
+                pass
+            elif self.isCurrentlyPlaying():
+                # Do not shut down the Pi as we are still playing music
+                self.logger.debug("ShutdownTimerThreadWorkaround: Canceling shutdown since music is currently playing")
+            else:
+                # Music is no longer playing and we had no sign of activity for a while: Shut down the Pi
                 self.logger.debug("ShutdownTimerThreadWorkaround: Setting flag to shut down the Pi")
                 self.shutdownFlag.set()
                 self.stopper.set()
