@@ -53,7 +53,7 @@ class UserInterface:
         
         # SMBUS stuff for additional ports via MCP23017 chip
         self.initMcp()
-        self.currentRoom = None
+        self.currentRoomNb = None
 
         
     def initMcp(self):
@@ -66,8 +66,8 @@ class UserInterface:
     0x10: 'INTCAPA', 0x11: 'INTCAPB', 0x12: 'GPIOA', 0x13: 'GPIOB',
     0x14: 'OLATA', 0x15: 'OLATB'}
         self.mcpRegisterMap = {value: key for key, value in self.mcpAddressMap.iteritems()}
-        self.roomMap = {
-                        0xFB: 'room1', 0xF7: 'room2', 0xEF: 'room3', 0xDF: 'room4', 0xFE: 'room5', 0xFD: 'room6'
+        self.roomNbMap = {
+                        0xFB: 1, 0xF7: 2, 0xEF: 3, 0xDF: 4, 0xFE: 5, 0xFD: 6
                         }
         
         # Define device
@@ -92,15 +92,15 @@ class UserInterface:
             #self.logger.debug("readMcp: reg = {} does not exist".format(reg))
             raise
         
-    def getActiveRoom(self):
-        #self.logger.debug("getActiveRoom")
+    def getActiveRoomNb(self):
+        #self.logger.debug("getActiveRoomNb")
         try:
             sw = self.readMcp('GPIOB')
             #self.logger.debug("sw = {}".format(sw))
-            #self.logger.debug("room = {}".format(self.roomMap[sw]))
-            return self.roomMap[sw]
+            #self.logger.debug("room = {}".format(self.roomNbMap[sw]))
+            return self.roomNbMap[sw]
         except:
-            return "Unknown room"
+            return "<Unknown room>"
         
     
     def initSwitches(self):
@@ -320,8 +320,8 @@ class UserInterface:
     def activateAltMode(self):
         self.altMode = True
         # Take note of the currently selected room
-        self.currentRoom = self.getActiveRoom()
-        self.logger.debug("Activating alt-mode: Current room is {}".format(self.currentRoom))
+        self.currentRoomNb = self.getActiveRoomNb()
+        self.logger.debug("Activating alt-mode: Current room number is {:d}".format(self.currentRoomNb))
         self.activateAltModeCurrentNbOperations = self.nbOperations
         
     def deactivateAltMode(self):
@@ -335,9 +335,10 @@ class UserInterface:
             return
             
         # Check whether the active room has been changed:
-        curRoom = self.getActiveRoom()
-        if curRoom != self.currentRoom:
-            self.logger.debug("The current room has been changed to {} (used to be {})".format(curRoom, self.currentRoom))
+        curRoomNb = self.getActiveRoomNb()
+        if curRoomNb != self.currentRoomNb:
+            self.logger.debug("The current room number has been changed to {:d} (used to be {:d})".format(curRoomNb, self.currentRoomNb))
+            self.queue.put("ROOM {:d}".format(curRoomNb))
             
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
