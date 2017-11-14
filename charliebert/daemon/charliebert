@@ -27,7 +27,8 @@ case "$1" in
     "
     ;;
   stop)
-    echo "Stopping charliebert"
+    status=$($0 status)
+    echo "Stopping charliebert (Status: '$status')"
     # This unfortunately does not work (as SIGINT cannot be sent to a background process)
     #/usr/bin/pkill --signal SIGINT -f "python charliebert.py"
 
@@ -43,15 +44,37 @@ case "$1" in
   status)
     su - $CHARLIEBERT_USER -c "
       cd $CHARLIEBERT_PATH
-      running="0"
+      running=0
       if [[ -e PID_CHARLIEBERT ]]
       then
-        running="1"
+        running=1
       fi
 
-      if [[ $running = "1" ]]
+      if [[ \$running = 1 ]]
       then
-        echo 'charliebert is running'
+        charliebert_pid=()
+	for pid in \$(cat PID_CHARLIEBERT)
+        do
+          if [[ -e /proc/\$pid ]]
+          then
+            if [[ \$(cat /proc/\$pid/cmdline) == /usr/bin/pythoncharliebert.py ]]
+            then
+              charliebert_pid=\"\$charliebert_pid \$pid\"
+            fi
+          fi
+        done
+
+        rm PID_CHARLIEBERT
+        if [[ \$charliebert_pid != '' ]]
+        then
+          for pid in \$charliebert_pid
+          do
+            echo \$pid >> PID_CHARLIEBERT
+          done
+          echo \"charliebert is running (pid: \$charliebert_pid)\"
+        else
+          echo 'charliebert is not running'
+        fi
       else
         echo 'charliebert is not running'
       fi
