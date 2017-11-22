@@ -23,9 +23,9 @@ def print_values(bus):
 bus = smbus.SMBus(1)
 bus.write_byte_data(DEVICE, register_map['GPPUA'], 0xFF)
 bus.write_byte_data(DEVICE, register_map['GPPUB'], 0xFF)
-#bus.write_byte_data(DEVICE, register_map['GPIOA'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['GPIOA'], 0xFF)
 #bus.write_byte_data(DEVICE, register_map['GPIOB'], 0xFF)
-bus.write_byte_data(DEVICE, register_map['IODIRA'], 0xFF)
+bus.write_byte_data(DEVICE, register_map['IODIRA'], 0x00)
 bus.write_byte_data(DEVICE, register_map['IODIRB'], 0xFF)
 
 counter = 0

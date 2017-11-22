@@ -54,6 +54,7 @@ class UserInterface:
         # SMBUS stuff for additional ports via MCP23017 chip
         self.initMcp()
         self.currentRoomNb = None
+        self.currentNetworkNb = None
 
         
     def initMcp(self):
@@ -66,8 +67,13 @@ class UserInterface:
     0x10: 'INTCAPA', 0x11: 'INTCAPB', 0x12: 'GPIOA', 0x13: 'GPIOB',
     0x14: 'OLATA', 0x15: 'OLATB'}
         self.mcpRegisterMap = {value: key for key, value in self.mcpAddressMap.iteritems()}
+        # First 6 bits
         self.roomNbMap = {
-                        0xFB: 1, 0xF7: 2, 0xEF: 3, 0xDF: 4, 0xFE: 5, 0xFD: 6
+                        0x3B: 1, 0x37: 2, 0x2F: 3, 0x1F: 4, 0x3E: 5, 0x3D: 6
+                        }
+        # Last 6 bits
+        self.networkNbMap = {
+                        0xC0: 1, 0x80: 2, 0x40: 3
                         }
         
         # Define device
@@ -76,9 +82,15 @@ class UserInterface:
         self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPPUA'], 0xFF)
         self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPPUB'], 0xFF)
         # Set direction (input) 
-        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['IODIRA'], 0xFF)
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['IODIRA'], 0x00)
         self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['IODIRB'], 0xFF)
+
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOA'], 0x00)
     
+    def endMcp(self):
+        # Switch leds off
+        self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap['GPIOA'], 0x00)
+
     def readMcp(self, reg):
         #self.logger.debug("readMcp for reg = {}".format(reg))
         if reg in self.mcpRegisterMap:
@@ -92,16 +104,75 @@ class UserInterface:
             #self.logger.debug("readMcp: reg = {} does not exist".format(reg))
             raise
         
+    def writeMcp(self, reg, sw):
+        #self.logger.debug("writeMcp for reg = {}, sw = {}".format(reg, sw))
+        if reg in self.mcpRegisterMap:
+            try:
+                #self.logger.debug("writeMcp: reg = {} exists".format(reg))
+                return self.mcpBus.write_byte_data(self.mcpDeviceAddress, self.mcpRegisterMap[reg], sw)
+            except:
+                #self.logger.debug("writeMcp: Cannot write data for reg = {}".format(reg))
+                raise
+        else:
+            #self.logger.debug("writeMcp: reg = {} does not exist".format(reg))
+            raise
+        
     def getActiveRoomNb(self):
         #self.logger.debug("getActiveRoomNb")
         try:
             sw = self.readMcp('GPIOB')
+            # Apply mask (extract first 6 bits)
+            sw = sw & 0x3F
             #self.logger.debug("sw = {}".format(sw))
             #self.logger.debug("room = {}".format(self.roomNbMap[sw]))
             return self.roomNbMap[sw]
         except:
             self.logger.error("Error while determining the room number")
             return 0
+        
+    def getActiveNetworkNb(self):
+        #self.logger.debug("getActiveNetworkNb")
+        try:
+            sw = self.readMcp('GPIOB')
+            # Apply mask (extract last 2 bits)
+            sw = sw & 0xC0
+            #self.logger.debug("sw = {}".format(sw))
+            #self.logger.debug("room = {}".format(self.networkNbMap[sw]))
+            return self.networkNbMap[sw]
+        except:
+            self.logger.error("Error while determining the room number")
+            return 0
+        
+    def setActiveSpeakerLeds(self, network, room):
+        #self.logger.debug("setActiveSpeakerLeds")
+        try:
+            if network == 2:
+                # Home
+                #sw = hex(2**(room - 1))
+                if room == 1:
+                    sw = 0x80
+                elif room == 2:
+                    sw = 0x40
+                elif room == 3:
+                    sw = 0x20
+                elif room == 4:
+                    sw = 0x10
+                elif room == 5:
+                    sw = 0x08
+                elif room == 6:
+                    sw = 0x04
+            elif network == 3:
+                # Charliebert
+                sw = 0x02
+            else:
+                if room % 2 == 0:
+                    sw = 0x1C
+                else:
+                    sw = 0xE0
+            #self.logger.debug("sw = {}".format(sw))
+            self.writeMcp('GPIOA', sw)
+        except:
+            self.logger.error("Error setting the room & network leds")
         
     
     def initSwitches(self):
@@ -320,9 +391,10 @@ class UserInterface:
             self.deactivateAltMode()
     def activateAltMode(self):
         self.altMode = True
-        # Take note of the currently selected room
+        # Take note of the currently selected room & network
         self.currentRoomNb = self.getActiveRoomNb()
-        self.logger.debug("Activating alt-mode: Current room number is {:d}".format(self.currentRoomNb))
+        self.currentNetworkNb = self.getActiveNetworkNb()
+        self.logger.debug("Activating alt-mode: Current room number is {:d}, network number is {:d}".format(self.currentRoomNb, self.currentNetworkNb))
         self.activateAltModeCurrentNbOperations = self.nbOperations
         
     def deactivateAltMode(self):
@@ -335,6 +407,8 @@ class UserInterface:
             self.logger.debug("Discarding room change: Other keys pressed since activating alt-mode)")
             return
             
+        changes = False
+
         # Check whether the active room has been changed:
         curRoomNb = self.getActiveRoomNb()
         if curRoomNb != self.currentRoomNb:
@@ -342,7 +416,22 @@ class UserInterface:
             if curRoomNb == 0 or self.currentRoomNb == 0:
                 self.logger.error("Wrong room number, skipping command (curRoomNb = {}, self.currentRoomNb = {})".format(curRoomNb, self.currentRoomNb))
             else:
+                changes = True
                 self.queue.put("ROOM {:d}".format(curRoomNb))
+            
+        # Check whether the active network has been changed:
+        curNetworkNb = self.getActiveNetworkNb()
+        if curNetworkNb != self.currentNetworkNb:
+            self.logger.debug("The current network number has been changed to {:d} (used to be {:d})".format(curNetworkNb, self.currentNetworkNb))
+            if curNetworkNb == 0 or self.currentNetworkNb == 0:
+                self.logger.error("Wrong network number, skipping command (curNetworkNb = {}, self.currentNetworkNb = {})".format(curNetworkNb, self.currentNetworkNb))
+            else:
+                changes = True
+                self.queue.put("NET {:d}".format(curNetworkNb))
+
+        if changes:
+            self.setActiveSpeakerLeds(curNetworkNb, curRoomNb)
+
             
     def isAltModeOn(self):
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
@@ -586,6 +675,9 @@ class UserInterface:
 #                self.switchOffTimer.join()
 #            except:
 #                pass
+
+            # Clean up MCP state
+            self.endMcp()
 
             self.logger.debug("Canceling switch off timer")
             try:
