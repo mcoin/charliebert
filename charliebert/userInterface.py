@@ -677,6 +677,7 @@ class UserInterface:
 #                pass
 
             # Clean up MCP state
+            self.logger.debug("Cleaning up MCP")
             self.endMcp()
 
             self.logger.debug("Canceling switch off timer")

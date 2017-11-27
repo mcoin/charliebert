@@ -463,7 +463,7 @@ def charliebert(logger, config):
         # sudo chmod u+s /sbin/shutdown
         # (using sleep to delay the actual shutdown, so as to leave time for the python program to quit properly)
         #logger.debug("/sbin/shutdown -h now")
-        os.system("/sbin/shutdown -h now")
+        os.system("sleep 1; /sbin/shutdown -h now")
             
 
 if __name__ == '__main__':
