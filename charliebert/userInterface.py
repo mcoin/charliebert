@@ -8,6 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from distutils.cmd import Command
 import smbus
+import re
     
     
 class UserInterface:
@@ -58,7 +59,8 @@ class UserInterface:
         self.currentNetworkNb = None
 
         # Parser for the p2u queue
-        self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*(\s+([-0-9]+))*\s*$")
+        self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*(\s*;\s+([-0-9]+))*\s*$")
+
         
     def initMcp(self):
         self.mcpDeviceAddress = 0x20
@@ -638,7 +640,7 @@ class UserInterface:
                 if m.group(1) == "NETWORK/ROOM":
                     networkIndex = int(m.group(5))
                     roomIndex = int(m.group(7))
-                    self.logger.debug("Command NETWORK (:d) / ROOM ({:d})".format(networkIndex, roomIndex))
+                    self.logger.debug("Command NETWORK ({:d}) / ROOM ({:d})".format(networkIndex, roomIndex))
                     self.setActiveSpeakerLeds(networkIndex, roomIndex)
                 else:
                    raise 

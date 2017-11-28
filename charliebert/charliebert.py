@@ -55,20 +55,20 @@ class PlayerInterfaceThread(threading.Thread):
                                'Wohnzimmer', 
                                'Obenauf',
                                'Charliebert')
-        self.availableRoomIndices = (1, 
-                               2, 
-                               3, 
-                               4, 
-                               5, 
-                               6, 
-                               1, 
-                               2,
-                               0)
+        self.availableRoomIndices = {'Bedroom': 1, 
+                               'Bathroom': 2, 
+                               'Office': 3, 
+                               'Kitchen': 4, 
+                               'Living Room': 5, 
+                               'Charlie\'s Room': 6, 
+                               'Wohnzimmer': 1, 
+                               'Obenauf': 2,
+                               'Charliebert': 0}
                 
         self.room = "Office"
         #self.room = "Bedroom"
         self.availableNetworks = ('aantgr', 'AP2')
-        self.availableNetworkIndices = (1, 2)
+        self.availableNetworkIndices = {'aantgr': 2, 'AP2': 1, 'charliebert': 3}
         self.network = "aantgr"
         self.availablePlaylistBasenames = "zCharliebert"
         self.playlistBasename = "zCharliebert"
@@ -133,6 +133,7 @@ class PlayerInterfaceThread(threading.Thread):
     def saveConfig(self):
         self.logger.debug("Saving current configuration of the player interface")
         self.logger.debug("Current room: {}".format(self.room))
+        self.logger.debug("Current network: {}".format(self.network))
         try:
             config.set('PlayerInterface', 'room', self.room)
             config.set('PlayerInterface', 'network', self.network)
@@ -143,10 +144,14 @@ class PlayerInterfaceThread(threading.Thread):
 
     def sendInitialNetworkAndRoomState(self):
         try:
-            networkIndex = availableNetworkIndices[self.availableNetworks.index(self.network)]
-            roomIndex = self.availableRoomIndices[self.availableRooms.index(self.room)]
-            self.logger.debug("Sending initial network ({:d}) and room ({:d}) indices to the user interface".format(networkIndex, roomindex))
-            self.p2uQ.put("NETWORK {:d}, ROOM {:d}".format(networkIndex, roomIndex))
+            self.logger.debug("network: {}".format(self.network))
+            self.logger.debug("room: {}".format(self.room))
+            networkIndex = self.availableNetworkIndices[self.network]
+            self.logger.debug("network index: {}".format(networkIndex))
+            roomIndex = self.availableRoomIndices[self.room]
+            self.logger.debug("room index: {}".format(roomIndex))
+            self.logger.debug("Sending initial network ({:d}) and room ({:d}) indices to the user interface".format(networkIndex, roomIndex))
+            self.p2uQ.put("NETWORK/ROOM {:d}; {:d}".format(networkIndex, roomIndex))
         except:
             self.logger.error("An error occurred while sending the initial network and room indices to the user interface")
 
