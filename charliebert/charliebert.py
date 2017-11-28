@@ -21,11 +21,12 @@ except:
 configFileName = 'charliebert.config'
 
 class UserInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, reset, logger, config):
+    def __init__(self, stopper, u2pQ, p2uQ, reset, logger, config):
         super(UserInterfaceThread, self).__init__()
         self.config = config
         self.stopper = stopper
-        self.q = q
+        self.u2pQ = u2pQ
+        self.p2uQ = p2uQ
         self.reset = reset
         self.logger = logger
 
@@ -33,16 +34,17 @@ class UserInterfaceThread(threading.Thread):
         
     def run(self):
         self.logger.debug("UserInterfaceThread starting")
-        self.ui.run(self.stopper, self.q, self.reset)
+        self.ui.run(self.stopper, self.u2pQ, self.p2uQ, self.reset)
         self.logger.debug("UserInterfaceThread stopping")
 
 class PlayerInterfaceThread(threading.Thread):
-    def __init__(self, stopper, q, shutdownPi, logger, config):
+    def __init__(self, stopper, u2pQ, p2uQ, shutdownPi, logger, config):
         super(PlayerInterfaceThread, self).__init__()
         self.config = config        
         self.logger = logger
         self.stopper = stopper
-        self.q = q
+        self.u2pQ = u2pQ
+        self.p2uQ = p2uQ
         
         self.availableRooms = ('Bedroom', 
                                'Bathroom', 
@@ -53,9 +55,20 @@ class PlayerInterfaceThread(threading.Thread):
                                'Wohnzimmer', 
                                'Obenauf',
                                'Charliebert')
+        self.availableRoomIndices = (1, 
+                               2, 
+                               3, 
+                               4, 
+                               5, 
+                               6, 
+                               1, 
+                               2,
+                               0)
+                
         self.room = "Office"
         #self.room = "Bedroom"
         self.availableNetworks = ('aantgr', 'AP2')
+        self.availableNetworkIndices = (1, 2)
         self.network = "aantgr"
         self.availablePlaylistBasenames = "zCharliebert"
         self.playlistBasename = "zCharliebert"
@@ -63,6 +76,8 @@ class PlayerInterfaceThread(threading.Thread):
         self.player = "Sonos"
         
         self.readConfig()
+        
+        self.sendInitialNetworkAndRoomState()
         
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*$")
         self.shutdownPi = shutdownPi
@@ -126,17 +141,26 @@ class PlayerInterfaceThread(threading.Thread):
         except:
             self.logger.debug("Error encountered while Saving current configuration of the player interface")
 
+    def sendInitialNetworkAndRoomState(self):
+        try:
+            networkIndex = availableNetworkIndices[self.availableNetworks.index(self.network)]
+            roomIndex = self.availableRoomIndices[self.availableRooms.index(self.room)]
+            self.logger.debug("Sending initial network ({:d}) and room ({:d}) indices to the user interface".format(networkIndex, roomindex))
+            self.p2uQ.put("NETWORK {:d}, ROOM {:d}".format(networkIndex, roomIndex))
+        except:
+            self.logger.error("An error occurred while sending the initial network and room indices to the user interface")
+
     def run(self):
         self.logger.debug("PlayerInterfaceThread starting")
         try:
             while not self.stopper.is_set():
                 #time.sleep(1)
                 self.logger.debug("Player Interface: Waiting for a command to execute")
-                command = self.q.get()
+                command = self.u2pQ.get()
                 if command is None:
                     break
                 self.logger.debug("Player Interface: Obtained command {}".format(command))
-                self.q.task_done()
+                self.u2pQ.task_done()
 
                 # Process commands using the following mini-parser: 'CMD [BANK] [VALUE]'
                 m = self.parser.match(command)
@@ -397,16 +421,17 @@ def charliebert(logger, config):
     
     # State indicator
     stopper = threading.Event()
-    # Queue for commands
-    q = Q.Queue()
+    # Queues for commands
+    u2pQ = Q.Queue()
+    p2uQ = Q.Queue()
     #
     shutdownPi = threading.Event()
     reset = threading.Event()
     startTime = "charliebert start: {}".format(datetime.now())
     logger.debug("{}".format(startTime))
     
-    userInterfaceThread = UserInterfaceThread(stopper, q, reset, logger, config)
-    playerInterfaceThread = PlayerInterfaceThread(stopper, q, shutdownPi, logger, config)
+    userInterfaceThread = UserInterfaceThread(stopper, u2pQ, p2uQ, reset, logger, config)
+    playerInterfaceThread = PlayerInterfaceThread(stopper, u2pQ, p2uQ, shutdownPi, logger, config)
 
     #shutdownTimerThread = ShutdownTimerThread(stopper, reset, shutdownPi, startTime, playerInterfaceThread, logger)
     shutdownTimerThread = ShutdownTimerThreadWorkaround(stopper, reset, shutdownPi, startTime, playerInterfaceThread, logger)
@@ -447,9 +472,9 @@ def charliebert(logger, config):
             reset.set() 
             
             
-        while not q.empty():
-            q.get()
-        q.put(None)
+        while not u2pQ.empty():
+            u2pQ.get()
+        u2pQ.put(None)
         
 
         # Write configuration to disk when exiting the program

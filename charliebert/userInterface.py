@@ -38,7 +38,8 @@ class UserInterface:
         self.stopRequested = False
         
         # Event queue to trigger actions from the server
-        self.queue = None
+        self.u2pQueue = None
+        self.p2uQueue = None
         
         # Number of operations (key presses): Incremented after each key press
         self.nbOperations = 0
@@ -56,6 +57,8 @@ class UserInterface:
         self.currentRoomNb = None
         self.currentNetworkNb = None
 
+        # Parser for the p2u queue
+        self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*\s*(\s+([-0-9]+))*\s*$")
         
     def initMcp(self):
         self.mcpDeviceAddress = 0x20
@@ -165,6 +168,7 @@ class UserInterface:
                 # Charliebert
                 sw = 0x02
             else:
+                # Oben
                 if room % 2 == 0:
                     sw = 0x1C
                 else:
@@ -327,9 +331,9 @@ class UserInterface:
             
             self.logger.debug("Volume change: {:d} (current volume: {:d})".format(volumeDelta, self.volume))
             print("Volume change: {:d}; newCounter: {:d}; volume = {:d}".format(volumeDelta, self.newCounter, self.volume))  # some test print
-            if self.queue is not None:
+            if self.u2pQueue is not None:
                 try:
-                    self.queue.put("VOLUME {:d}".format(volumeDelta))
+                    self.u2pQueue.put("VOLUME {:d}".format(volumeDelta))
                 except:
                     pass
                 
@@ -417,7 +421,7 @@ class UserInterface:
                 self.logger.error("Wrong room number, skipping command (curRoomNb = {}, self.currentRoomNb = {})".format(curRoomNb, self.currentRoomNb))
             else:
                 changes = True
-                self.queue.put("ROOM {:d}".format(curRoomNb))
+                self.u2pQueue.put("ROOM {:d}".format(curRoomNb))
             
         # Check whether the active network has been changed:
         curNetworkNb = self.getActiveNetworkNb()
@@ -427,7 +431,7 @@ class UserInterface:
                 self.logger.error("Wrong network number, skipping command (curNetworkNb = {}, self.currentNetworkNb = {})".format(curNetworkNb, self.currentNetworkNb))
             else:
                 changes = True
-                self.queue.put("NET {:d}".format(curNetworkNb))
+                self.u2pQueue.put("NET {:d}".format(curNetworkNb))
 
         if changes:
             self.setActiveSpeakerLeds(curNetworkNb, curRoomNb)
@@ -466,14 +470,14 @@ class UserInterface:
                                                                                     "ON" if self.isAltModeOn() else "OFF",
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
 
-        if self.queue is not None:
+        if self.u2pQueue is not None:
             try:
                 if self.isAltModeOn():
-                    self.queue.put("TRACK {:d}".format(self.getSwitch(channel)))
+                    self.u2pQueue.put("TRACK {:d}".format(self.getSwitch(channel)))
                 elif self.isShiftModeOn():
-                    self.queue.put("ROOM {:d}".format(self.getSwitch(channel)))
+                    self.u2pQueue.put("ROOM {:d}".format(self.getSwitch(channel)))
                 else:
-                    self.queue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
+                    self.u2pQueue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
                 pass
 
@@ -527,14 +531,14 @@ class UserInterface:
             if self.switches[channel] == self.playSwitch:
                 self.deactivateShiftMode()
         else:
-            if self.queue is not None:
+            if self.u2pQueue is not None:
                 try:
                     if self.switches[channel] == self.playSwitch and not self.isAltModeOn():
-                        self.queue.put("PLAY/PAUSE")
+                        self.u2pQueue.put("PLAY/PAUSE")
                     elif self.switches[channel] == self.forwardSwitch:
-                        self.queue.put("FORWARD")
+                        self.u2pQueue.put("FORWARD")
                     elif self.switches[channel] == self.backSwitch and not self.isAltModeOn():
-                        self.queue.put("BACK")
+                        self.u2pQueue.put("BACK")
                 except:
                     pass
 
@@ -588,9 +592,9 @@ class UserInterface:
         # All the conditions are fulfilled: Send switch off signal
         self.logger.debug("Mode and Back pressed for {} seconds: Sending signal to shut down the pi".format(self.switchOffTimePeriod))
 
-        if self.queue is not None:
+        if self.u2pQueue is not None:
             try:
-                self.queue.put("SHUTDOWN")
+                self.u2pQueue.put("SHUTDOWN")
             except:
                 pass
         
@@ -624,14 +628,32 @@ class UserInterface:
                 self.blinkState = not self.blinkState
                 self.switchAllLeds(self.blinkState)
         
-            
+    def processCommands(self):
+        if not self.p2uQueue.empty():
+            command = self.p2uQueue.get(False)
+
+            # Process commands using the following mini-parser
+            m = self.parser.match(command)
+            try:
+                if m.group(1) == "NETWORK/ROOM":
+                    networkIndex = int(m.group(5))
+                    roomIndex = int(m.group(7))
+                    self.logger.debug("Command NETWORK (:d) / ROOM ({:d})".format(networkIndex, roomIndex))
+                    self.setActiveSpeakerLeds(networkIndex, roomIndex)
+                else:
+                   raise 
+            except:
+                self.logger.error("Unrecognized command: '{}'".format(command))
+
+
                     
-    def run(self, stopper=None, queue=None, reset=None):
+    def run(self, stopper=None, u2pQueue=None, p2uQueue=None, reset=None):
         try:
             self.logger.info("Starting main loop")  
             self.stopper = stopper
             print("Reacting to interrupts from switches")
-            self.queue = queue
+            self.u2pQueue = u2pQueue
+            self.p2uQueue = p2uQueue
 
             self.reset = reset
               
@@ -645,6 +667,8 @@ class UserInterface:
                 
                 self.checkAltMode()
 
+                self.processCommands()
+                    
                 if self.stopRequested:
                     self.logger.debug("Requesting stop")
                     break
