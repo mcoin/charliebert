@@ -140,7 +140,7 @@ class PlayerInterfaceThread(threading.Thread):
             config.set('PlayerInterface', 'playlistBasename', self.playlistBasename)
             config.set('PlayerInterface', 'player', self.player)
         except:
-            self.logger.debug("Error encountered while Saving current configuration of the player interface")
+            self.logger.debug("Error encountered while saving current configuration of the player interface")
 
     def sendInitialNetworkAndRoomState(self):
         try:
@@ -259,6 +259,9 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
 
                         self.logger.debug("Current room: {}".format(self.room))
+                        
+                        # Save current configuration for next start
+                        self.saveConfig()
                     else:
                        raise 
                 except:
@@ -268,7 +271,7 @@ class PlayerInterfaceThread(threading.Thread):
             self.logger.debug("Player Interface stopped (Ctrl-C)")
         self.logger.debug("PlayerInterfaceThread stopping")
 
-        # Save config before quitting
+        # Save config before quitting (possibly useless, as it may occur only after writeConfig())
         self.saveConfig()
         
     # Returns True in case the currently selected player is currently playing
@@ -483,8 +486,6 @@ def charliebert(logger, config):
         
 
         # Write configuration to disk when exiting the program
-        playerInterfaceThread.saveConfig() # Explicit call (redundant) to ensure the config has been saved before it is written 
-                                           # (the other call occurs typically right after writeConfig()...)
         writeConfig(logger, config)
         
     if shutdownPi.is_set():
