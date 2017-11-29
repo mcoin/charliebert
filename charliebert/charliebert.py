@@ -146,10 +146,18 @@ class PlayerInterfaceThread(threading.Thread):
         try:
             self.logger.debug("network: {}".format(self.network))
             self.logger.debug("room: {}".format(self.room))
-            networkIndex = self.availableNetworkIndices[self.network]
-            self.logger.debug("network index: {}".format(networkIndex))
-            roomIndex = self.availableRoomIndices[self.room]
-            self.logger.debug("room index: {}".format(roomIndex))
+            self.logger.debug("player: {}".format(self.player))
+            networkIndex = -1
+            roomIndex = -1
+            if self.player == "Mpd":
+                networkIndex = self.availableNetworkIndices["charliebert"]
+                self.logger.debug("network index: {}".format(networkIndex))
+                roomIndex = 0
+            else:
+                networkIndex = self.availableNetworkIndices[self.network]
+                self.logger.debug("network index: {}".format(networkIndex))
+                roomIndex = self.availableRoomIndices[self.room]
+                self.logger.debug("room index: {}".format(roomIndex))
             self.logger.debug("Sending initial network ({:d}) and room ({:d}) indices to the user interface".format(networkIndex, roomIndex))
             self.p2uQ.put("NETWORK/ROOM {:d}; {:d}".format(networkIndex, roomIndex))
         except:
@@ -209,10 +217,9 @@ class PlayerInterfaceThread(threading.Thread):
                         except:
                             self.logger.debug("Could not set stopper")
 
-                    elif m.group(1) == "ROOM":
+                    elif m.group(1) == "ROOM/NET":
                         roomNb = int(m.group(5))
-                        self.logger.debug("Command ROOM: {:d}".format(roomNb))
-
+                        self.logger.debug("Command ROOM/NET: {:d}".format(roomNb))
 
                         if roomNb == 12:
                             if self.player != "Mpd":
@@ -256,9 +263,68 @@ class PlayerInterfaceThread(threading.Thread):
                             self.room = "Charliebert"
 
                         else:
-                            self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
+                            self.logger.error("Command ROOM/NET: {:d}: Room does not exist".format(roomNb))
 
                         self.logger.debug("Current room: {}".format(self.room))
+                        self.logger.debug("Current network: {}".format(self.network))
+                        
+                        # Save current configuration for next start
+                        self.saveConfig()
+
+                    elif m.group(1) == "ROOM":
+                        roomNb = int(m.group(5))
+                        self.logger.debug("Command ROOM: {:d}".format(roomNb))
+
+                        if self.network == "aantgr":
+                            if roomNb == 1:
+                                self.room = "Bedroom"
+                            elif roomNb == 2:
+                                self.room = "Bathroom"
+                            elif roomNb == 3:
+                                self.room = "Office"  
+                            elif roomNb == 4:
+                                self.room = "Kitchen"  
+                            elif roomNb == 5:
+                                self.room = "Living Room"  
+                            elif roomNb == 6:
+                                self.room = "Charlie's Room"
+                            else:
+                                self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
+                        elif self.network == "AP2":
+                            if roomNb % 2 == 0:
+                                self.room = "Wohnzimmer"
+                            else:
+                                self.room = "Obenauf"
+                        else:
+                            self.room = "Charliebert"
+
+                        self.logger.debug("Current room: {}".format(self.room))
+                        
+                        # Save current configuration for next start
+                        self.saveConfig()
+
+                    elif m.group(1) == "NET":
+                        networkNb = int(m.group(5))
+                        self.logger.debug("Command NET: {:d}".format(networkNb))
+
+                        if networkNb == 1 or networkNb == 2:
+                            if self.player != "Sonos":
+                                self.player = "Sonos"
+                                self.logger.debug("Switching player to Sonos")
+                                self.pi = self.si
+                            if networkNb == 2:
+                                self.changeNetwork("aantgr")
+                            elif networkNb == 1:
+                                self.changeNetwork("AP2")
+                        elif networkNb == 3:
+                            if self.player != "Mpd":
+                                self.player = "Mpd"
+                                self.logger.debug("Switching player to MPD")
+                                self.pi = self.mi
+                        else:
+                            self.logger.error("Command NET {:d}: Network does not exist".format(networkNb))
+
+                        self.logger.debug("Current Network: {}".format(self.network))
                         
                         # Save current configuration for next start
                         self.saveConfig()
