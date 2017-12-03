@@ -4,7 +4,11 @@ import logging
 from logging.handlers import RotatingFileHandler
 from time import sleep
 import time
+import os
+from playerInterface import Playlist
+import urllib
 
+    
 class SonosInterface(PlayerInterface):
     def __init__(self, logger):
         # Logging mechanism
@@ -235,7 +239,72 @@ class SonosInterface(PlayerInterface):
             self.logger.error("Problem toggling play/pause (current state: {})".format(currentState))
             return False
             
+    # Reads the details of a given playlist and save those to a file
+    def exportPlaylistDetails(self, playlistName, room):
+        self.logger.debug("exportPlaylistDetails")
+        
+        try:
+            sp = self.getSpeaker(room)
             
+            # Clear queue to start with an empty state
+            sp.clear_queue()
+            
+            # Find playlist
+            sonosPlaylist = sp.get_sonos_playlist_by_attr('title', playlistName)
+
+            # Enqueue tracks
+            sp.add_to_queue(sonosPlaylist)
+            
+            # Figure out how many items there are in the queue
+            queueSize = int(sp.queue_size)
+            
+            self.logger.debug(u'Playlist {} ({:d} items)'.format(playlistName, queueSize))
+            
+            data = dict()
+            
+            playlist = Playlist(playlistName)
+            
+            # Retrieve track info for each item in the queue
+            itemNb = 0
+            while itemNb < queueSize:
+                info = sp.get_current_track_info()
+                itemNb = int(info[u'playlist_position'])
+                artist = info[u'artist']
+                title = info[u'title']
+                album = info[u'album']
+                uri = info[u'uri']
+                uri = urllib.unquote(uri).decode("utf-8")
+                
+                self.logger.debug(u"    {:d} Artist: {}".format(itemNb, artist))
+                self.logger.debug(u"    {:d} Album: {}".format(itemNb, album))
+                self.logger.debug(u"    {:d} Title: {}".format(itemNb, title))
+                self.logger.debug(u"    {:d} URI: {}".format(itemNb, uri))
+                
+                playlist.addTrack(itemNb, artist, album, title, uri)
+                
+                try:
+                    sp.next()
+                except:
+                    break
+                
+#             json = playlist.toJSON()
+            
+            try:
+                os.mkdir(u'playlists')
+            except OSError:
+                pass
+             
+            playlist.writeToFile(u'playlists/{}.json'.format(playlistName))
+                
+#             self.logger.debug(u'JSON: {}'.format(json))
+            
+            # Clean up
+            sp.clear_queue()
+        except:
+            self.logger.error("Problem exporting playlist details for '{}'".format(playlistName))
+            return
+        
+        
 if __name__ == '__main__':
     # Logging
 #    logging.basicConfig(filename='sonosInterface.log', 
@@ -256,6 +325,11 @@ if __name__ == '__main__':
     si = SonosInterface(logger)
     try:
         si.printSpeakerList()
+        
+        si.exportPlaylistDetails('zCharliebert_A01', 'Office')
+        import sys
+        sys.exit()
+        
         si.startPlaylist("zCharliebert_A01", "Office")
         sleep(5)
         si.playTrackNb(3, "Office")

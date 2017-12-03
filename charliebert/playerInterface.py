@@ -2,6 +2,36 @@ import logging
 from logging.handlers import RotatingFileHandler
 from time import sleep
 import time
+import json
+import io
+
+
+class Playlist:
+    def __init__(self, name):
+        self.name = name
+        self.tracks = dict()
+        
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, ensure_ascii=False)
+        
+    def addTrack(self, trackNb, artist, album, title, uri):
+        self.tracks[trackNb] = dict()
+        t = self.tracks[trackNb]
+
+        t[u'artist'] = artist
+        t[u'album'] = album
+        t[u'title'] = title
+        t[u'uri'] = uri
+        
+    def writeToFile(self, filename):
+        
+        with io.open(filename, 'w', encoding='utf8') as outfile:
+#             data = json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4, ensure_ascii=False)
+            data = self.toJSON()
+            outfile.write(unicode(data))
+             
+#         with open(filename, 'w') as outfile:
+#             json.dump(self, outfile, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 class PlayerInterface():
     def __init__(self, logger):
@@ -96,6 +126,12 @@ class PlayerInterface():
     def isCurrentlyPlaying(self, room):
         self.logger.debug("isCurrentlyPlaying")
         return False
+    
+    # Reads the details of a given playlist and save those to a file
+    def exportPlaylistDetails(self, playlistName, room):
+        self.logger.debug("exportPlaylistDetails")
+        
+        
 
 if __name__ == '__main__':
     # Logging
