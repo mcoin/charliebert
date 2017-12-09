@@ -33,6 +33,21 @@ class Playlist:
 #         with open(filename, 'w') as outfile:
 #             json.dump(self, outfile, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
+    def readFromFile(self, filename):
+        
+#         logger.debug(u'readFromFile {}'.format(filename))
+        with open(filename) as json_data:
+#             self = json.load(json_data)
+#             logger.debug(u'Opened file {}'.format(filename))
+            data = json.load(json_data)
+ 
+#             logger.debug(u'Setting name')
+            self.name = data[u'name']
+#             logger.debug(u'Setting tracks')
+            self.tracks = data[u'tracks']
+#             logger.debug(u'All set')
+
+    
 class PlayerInterface():
     def __init__(self, logger):
         # Logging mechanism
@@ -127,11 +142,13 @@ class PlayerInterface():
         self.logger.debug("isCurrentlyPlaying")
         return False
     
-    # Reads the details of a given playlist and save those to a file
+    # Obtain the details of a given playlist and save those to a file
     def exportPlaylistDetails(self, playlistName, room):
         self.logger.debug("exportPlaylistDetails")
         
-        
+    # Reads the details of a given playlist and save those in the player configuration
+    def importPlaylistDetails(self, playlistName, room):
+        self.logger.debug("importPlaylistDetails")
 
 if __name__ == '__main__':
     # Logging

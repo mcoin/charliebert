@@ -5,6 +5,7 @@ from logging.handlers import RotatingFileHandler
 from time import sleep
 import time
 from cookielib import logger
+from playerInterface import Playlist
 
 class MpdInterface(PlayerInterface):
     def __init__(self, logger):
@@ -252,6 +253,28 @@ class MpdInterface(PlayerInterface):
         
         return isCurrentlyPlaying
     
+    def importPlaylistDetails(self, playlistName, room):
+        self.logger.debug("importPlaylistDetails")
+        
+        try:
+            self.logger.debug("Define Playlist object")
+            playlist = Playlist(playlistName)
+            
+            self.logger.debug("Read JSON")
+            playlist.readFromFile(u'playlists/{}.json'.format(playlistName))
+            
+            self.logger.debug(u'Playlist {}'.format(playlist.name))
+            
+            itemNb = 0
+            for track in playlist.tracks:
+                itemNb += 1
+                self.logger.debug(u"    {:d} Artist: {}".format(itemNb, playlist.tracks[track][u'artist']))
+                self.logger.debug(u"    {:d} Album: {}".format(itemNb, playlist.tracks[track][u'album']))
+                self.logger.debug(u"    {:d} Title: {}".format(itemNb, playlist.tracks[track][u'title']))
+                self.logger.debug(u"    {:d} URI: {}".format(itemNb, playlist.tracks[track][u'uri']))
+                
+        except:
+            self.logger.error("Error while importing playlist '{}'".format(playlistName))
                 
 if __name__ == '__main__':
     # Logging
@@ -272,6 +295,11 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
+        mi.importPlaylistDetails('zCharliebert_A01', 'Office')
+        import sys
+        sys.exit()
+        
+        
         mi.startPlaylist("zCharliebert_A01", "Office")
         sleep(5)
         mi.playTrackNb(3, "Office")

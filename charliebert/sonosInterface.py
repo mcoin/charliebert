@@ -260,8 +260,6 @@ class SonosInterface(PlayerInterface):
             
             self.logger.debug(u'Playlist {} ({:d} items)'.format(playlistName, queueSize))
             
-            data = dict()
-            
             playlist = Playlist(playlistName)
             
             # Retrieve track info for each item in the queue
@@ -274,6 +272,7 @@ class SonosInterface(PlayerInterface):
                 album = info[u'album']
                 uri = info[u'uri']
                 uri = urllib.unquote(uri).decode("utf-8")
+                uri = uri.replace(u'x-file-cifs:', u'')
                 
                 self.logger.debug(u"    {:d} Artist: {}".format(itemNb, artist))
                 self.logger.debug(u"    {:d} Album: {}".format(itemNb, album))
