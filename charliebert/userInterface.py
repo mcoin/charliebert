@@ -74,9 +74,10 @@ class UserInterface:
         self.mcpRegisterMap = {value: key for key, value in self.mcpAddressMap.iteritems()}
         # First 6 bits
         self.roomNbMap = {
-                        0x3B: 1, 0x37: 2, 0x2F: 3, 0x1F: 4, 0x3E: 5, 0x3D: 6
+                        #0x3B: 1, 0x37: 2, 0x2F: 3, 0x1F: 4, 0x3E: 5, 0x3D: 6
+                        0x3B: 1, 0x37: 4, 0x2F: 6, 0x1F: 5, 0x3E: 3, 0x3D: 2
                         }
-        # Last 6 bits
+        # Last 2 bits
         self.networkNbMap = {
                         0xC0: 1, 0x80: 2, 0x40: 3
                         }
@@ -212,10 +213,10 @@ class UserInterface:
                     20: "Switch {:d}".format(self.switchNbs[20]),
                     21: "Switch {:d}".format(self.switchNbs[21]),
                     5:  "Play/Pause",
-                    11: "Forward",
-                    9:  "Back",
-                    17: "Bank",
-                    27: "Mode"
+                    9: "Forward",
+                    11:  "Back",
+                    27: "Bank",
+                    17: "Mode"
                     }
         # Special switches
         self.bankSwitch = "Bank" # Switch to a different playlist bank
