@@ -4,7 +4,9 @@ from time import sleep
 import time
 import json
 import io
-
+import os
+import re
+from smb.SMBConnection import SMBConnection
 
 class Playlist:
     def __init__(self, name):
@@ -46,6 +48,84 @@ class Playlist:
 #             logger.debug(u'Setting tracks')
             self.tracks = data[u'tracks']
 #             logger.debug(u'All set')
+
+    def copyFiles(self, destDir, logger=None):
+        try:
+            os.mkdir(destDir)
+        except OSError:
+            pass
+        
+        try:
+        
+            user = u'toma'
+            password = u''
+            
+            #file = u'//raspi3/intenso2/Music/Kids/Editions Lito/Mes Comptines Rigolotes/11 Trois Petits Canetons.m4a'
+            
+            for track in self.tracks:
+                file = self.tracks[track][u'uri']
+                m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', file)
+                
+                if logger is not None:
+                    logger.debug(u'group 1 = {}\ngroup 2 = {}\ngroup 3 = {}'.format(m.group(1), m.group(2), m.group(3)))
+        
+                #server = "raspi3.local"
+                server = u'{}.local'.format(m.group(1))
+                #share = "intenso2"
+                share = u'{}'.format(m.group(2))
+                #path = "Music/Kids/Editions Lito/Mes Comptines Rigolotes/11 Trois Petits Canetons.m4a"
+                path = u'{}'.format(m.group(3))
+                #target = "Music/local_file.m4a"
+                target= u'{}'.format(m.group(3))
+                
+                if logger is not None:
+                    logger.debug(u'server = {}\nshare = {}\npath = {}\ntarget = {}'.format(server, share, path, target))
+                
+                if logger is not None:
+                    logger.debug(u'Determining target file using additional dir \'{}\''.format(destDir))
+                
+                target = os.path.join(destDir, target)
+                dir = os.path.dirname(target)
+
+                if logger is not None:
+                    logger.debug(u'Target file: \'{}\''.format(target))
+                    logger.debug(u'Dirname: \'{}\''.format(dir))
+        
+                try:
+                    os.makedirs(dir)
+                except OSError:
+                    pass
+
+                if logger is not None:
+                    logger.debug(u'Converting strings')
+                                    
+                user = user.encode('utf8', 'ignore')
+                password = password.encode('utf8', 'ignore')
+                server = server.encode('utf8', 'ignore')
+                share = share.encode('utf8', 'ignore')
+#                 path = path.encode('utf8', 'ignore')
+#                 target = target.encode('utf8', 'ignore')
+#                 
+#                 if logger is not None:
+#                     logger.debug("user = {}\npassword = {}\nserver = {}\nshare = {}\ntarget = {}".format(user, password, server, share, target))
+        
+                
+                conn = SMBConnection(user, password, server, server, use_ntlm_v2 = True)
+                assert conn.connect(server, 139)
+                
+                if logger is not None:
+                    logger.debug(u'Connection established, retrieving file')
+        
+                with open(target, 'wb') as fp:
+                    conn.retrieveFile(share, path, fp)
+                
+                if logger is not None:
+                    logger.debug(u'File retrieved')
+                    
+                conn.close()
+        except:
+            if logger is not None:
+                logger.error("user = {}\npassword = {}\nserver = {}\nshare = {}\ntarget = {}".format(user, password, server, share, target))
 
     
 class PlayerInterface():
