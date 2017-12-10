@@ -56,10 +56,6 @@ class Playlist:
             pass
         
         try:
-        
-            user = u'toma'
-            password = u''
-                        
             for track in self.tracks:
                 file = self.tracks[track][u'uri']
                 m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', file)

@@ -266,7 +266,7 @@ class MpdInterface(PlayerInterface):
             self.logger.debug(u'Playlist {}'.format(playlist.name))
                 
             self.logger.debug("Copying files")
-            playlist.copyFiles(u'music', u'toma', u'')
+            playlist.copyFiles(u'music', u'toma', u'', False, self.logger)
                 
         except:
             self.logger.error("Error while importing playlist '{}'".format(playlistName))
@@ -283,14 +283,25 @@ class MpdInterface(PlayerInterface):
             self.client.clear()
             self.logger.debug("Initializing playlist")
             playlistNameTmp = playlistName + '_tmp'
-            self.client.rm(playlistNameTmp)
+            self.logger.debug("Deleting possibly existing playlist {}".format(playlistNameTmp))
+            try:
+                self.client.rm(playlistNameTmp)
+            except:
+                pass
             
-            for track in playlist.tracks:
-                artist = playlist.tracks[track][u'artist']
-                album = playlist.tracks[track][u'album']
-                title = playlist.tracks[track][u'title']
+            #for track in playlist.tracks:
+            for track, info in sorted(playlist.tracks.items(), key=lambda t: int(t[0])):
+                self.logger.debug("Adding track {:d}".format(int(track)))
+                #artist = playlist.tracks[track][u'artist']
+                #album = playlist.tracks[track][u'album']
+                #title = playlist.tracks[track][u'title']
+                artist = info[u'artist']
+                album = info[u'album']
+                title = info[u'title']
+                trackNb = int(track)
 
-                self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title)
+                self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+                #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
         except:
             self.logger.error("Problem adding playlist '{}'".format(playlistName))
             return
@@ -317,6 +328,53 @@ if __name__ == '__main__':
     mi = MpdInterface(logger)
     try:
         mi.importPlaylist('zCharliebert_A01', 'Office')
+        mi.importPlaylist('zCharliebert_A02', 'Office')
+        mi.importPlaylist('zCharliebert_A03', 'Office')
+        mi.importPlaylist('zCharliebert_A04', 'Office')
+        mi.importPlaylist('zCharliebert_A05', 'Office')
+        mi.importPlaylist('zCharliebert_A06', 'Office')
+        mi.importPlaylist('zCharliebert_A07', 'Office')
+        mi.importPlaylist('zCharliebert_A08', 'Office')
+        mi.importPlaylist('zCharliebert_A09', 'Office')
+        mi.importPlaylist('zCharliebert_A10', 'Office')
+        mi.importPlaylist('zCharliebert_A11', 'Office')
+        mi.importPlaylist('zCharliebert_A12', 'Office')
+        mi.importPlaylist('zCharliebert_B01', 'Office')
+        mi.importPlaylist('zCharliebert_B02', 'Office')
+        mi.importPlaylist('zCharliebert_B03', 'Office')
+        mi.importPlaylist('zCharliebert_B04', 'Office')
+        mi.importPlaylist('zCharliebert_B05', 'Office')
+        mi.importPlaylist('zCharliebert_B06', 'Office')
+        mi.importPlaylist('zCharliebert_B07', 'Office')
+        mi.importPlaylist('zCharliebert_B08', 'Office')
+        mi.importPlaylist('zCharliebert_B09', 'Office')
+        mi.importPlaylist('zCharliebert_B10', 'Office')
+        mi.importPlaylist('zCharliebert_B11', 'Office')
+        mi.importPlaylist('zCharliebert_B12', 'Office')
+        mi.importPlaylist('zCharliebert_C01', 'Office')
+        mi.importPlaylist('zCharliebert_C02', 'Office')
+        mi.importPlaylist('zCharliebert_C03', 'Office')
+        mi.importPlaylist('zCharliebert_C04', 'Office')
+        mi.importPlaylist('zCharliebert_C05', 'Office')
+        mi.importPlaylist('zCharliebert_C06', 'Office')
+        mi.importPlaylist('zCharliebert_C07', 'Office')
+        mi.importPlaylist('zCharliebert_C08', 'Office')
+        mi.importPlaylist('zCharliebert_C09', 'Office')
+        mi.importPlaylist('zCharliebert_C10', 'Office')
+        mi.importPlaylist('zCharliebert_C11', 'Office')
+        mi.importPlaylist('zCharliebert_C12', 'Office')
+        mi.importPlaylist('zCharliebert_D01', 'Office')
+        mi.importPlaylist('zCharliebert_D02', 'Office')
+        mi.importPlaylist('zCharliebert_D03', 'Office')
+        mi.importPlaylist('zCharliebert_D04', 'Office')
+        mi.importPlaylist('zCharliebert_D05', 'Office')
+        mi.importPlaylist('zCharliebert_D06', 'Office')
+        mi.importPlaylist('zCharliebert_D07', 'Office')
+        mi.importPlaylist('zCharliebert_D08', 'Office')
+        mi.importPlaylist('zCharliebert_D09', 'Office')
+        mi.importPlaylist('zCharliebert_D10', 'Office')
+        mi.importPlaylist('zCharliebert_D11', 'Office')
+        mi.importPlaylist('zCharliebert_D12', 'Office')
         import sys
         sys.exit()
         
