@@ -255,7 +255,15 @@ class PlayerInterfaceThread(threading.Thread):
                             self.room = "Wohnzimmer"                                                                                                                                    
                         elif roomNb == 8:
                             self.changeNetwork("AP2")
-                            self.room = "Obenauf"                                                                                                                                    
+                            self.room = "Obenauf"
+                        elif roomNb == 9:
+                            self.logger.debug("Exporting sonos playlists...")
+                            self.si.exportAllPlaylists(u'Office')            
+                            self.logger.debug("Done.")
+                            
+                            self.logger.debug("Importing playlists into MPD...")
+                            self.mi.importAllPlaylists(u'Office')            
+                            self.logger.debug("Done.")                                                                                                   
                         elif roomNb == 10:
                             self.changeNetwork("aapx")
                             self.room = "none"                                                                                                                                    
