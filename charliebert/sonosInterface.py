@@ -240,7 +240,7 @@ class SonosInterface(PlayerInterface):
             return False
             
     # Reads the details of a given playlist and save those to a file
-    def exportPlaylistDetails(self, playlistName, room):
+    def exportPlaylistDetails(self, playlistName, room, archiveDir=None):
         self.logger.debug("exportPlaylistDetails")
         
         try:
@@ -294,6 +294,12 @@ class SonosInterface(PlayerInterface):
                 pass
              
             playlist.writeToFile(u'playlists/{}.json'.format(playlistName))
+            if archiveDir is not None:
+                try:
+                    os.mkdir(u'playlists/{}'.format(archiveDir))
+                except OSError:
+                    pass
+                playlist.writeToFile(u'playlists/{}/{}.json'.format(archiveDir, playlistName))
                 
 #             self.logger.debug(u'JSON: {}'.format(json))
             
@@ -302,8 +308,26 @@ class SonosInterface(PlayerInterface):
         except:
             self.logger.error("Problem exporting playlist details for '{}'".format(playlistName))
             return
-        
-        
+
+    # Reads the details of all playlists and save those to json files
+    def exportAllPlaylists(self, room):
+        self.logger.debug("exportAllPlaylists")
+        try:
+                
+            import datetime
+            
+            archiveDir = u'{:%Y-%m-%d_%H-%M}'.format(datetime.datetime.now())
+            room = u'Office'
+            playlistBasename = u'zCharliebert_'
+            
+            for bank in ('A', 'B', 'C', 'D'):
+                for nb in range(1, 13):             
+                    playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
+                    self.exportPlaylistDetails(playlistName, room, archiveDir)
+        except:
+            self.logger.error("Problem exporting playlists")
+
+
 if __name__ == '__main__':
     # Logging
 #    logging.basicConfig(filename='sonosInterface.log', 
@@ -324,6 +348,10 @@ if __name__ == '__main__':
     si = SonosInterface(logger)
     try:
         si.printSpeakerList()
+        
+        si.exportAllPlaylists('Office')
+        import sys
+        sys.exit()
         
         si.exportPlaylistDetails('zCharliebert_A01', 'Office')
         si.exportPlaylistDetails('zCharliebert_A02', 'Office')
