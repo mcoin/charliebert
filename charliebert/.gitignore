@@ -1,4 +1,5 @@
 *.log
+*.log.*
 *.swp
 *.swn
 *.swo
@@ -11,3 +12,6 @@ charliebert_startups
 PID_CHARLIEBERT
 charliebert_error
 charliebert.config
+
+music/
+playlists/
