@@ -74,8 +74,7 @@ class UserInterface:
         self.mcpRegisterMap = {value: key for key, value in self.mcpAddressMap.iteritems()}
         # First 6 bits
         self.roomNbMap = {
-                        #0x3B: 1, 0x37: 2, 0x2F: 3, 0x1F: 4, 0x3E: 5, 0x3D: 6
-                        0x3B: 1, 0x37: 4, 0x2F: 6, 0x1F: 5, 0x3E: 3, 0x3D: 2
+                        0x3B: 1, 0x37: 2, 0x2F: 3, 0x1F: 4, 0x3E: 5, 0x3D: 6
                         }
         # Last 2 bits
         self.networkNbMap = {
@@ -154,19 +153,18 @@ class UserInterface:
         try:
             if network == 2:
                 # Home
-                #sw = hex(2**(room - 1))
                 if room == 1:
                     sw = 0x80
                 elif room == 2:
-                    sw = 0x40
-                elif room == 3:
-                    sw = 0x20
-                elif room == 4:
                     sw = 0x10
-                elif room == 5:
-                    sw = 0x08
-                elif room == 6:
+                elif room == 3:
                     sw = 0x04
+                elif room == 4:
+                    sw = 0x08
+                elif room == 5:
+                    sw = 0x20
+                elif room == 6:
+                    sw = 0x40
             elif network == 3:
                 # Charliebert
                 sw = 0x02
