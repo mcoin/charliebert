@@ -296,6 +296,14 @@ class PlayerInterfaceThread(threading.Thread):
                                 self.room = "Living Room"  
                             elif roomNb == 6:
                                 self.room = "Charlie's Room"
+                            elif roomNb == 9:
+                                self.logger.debug("Exporting sonos playlists...")
+                                self.si.exportAllPlaylists(u'Office')            
+                                self.logger.debug("Done.")
+                                
+                                self.logger.debug("Importing playlists into MPD...")
+                                self.mi.importAllPlaylists(u'Office')            
+                                self.logger.debug("Done.")                                                                                                   
                             else:
                                 self.logger.error("Command ROOM: {:d}: Room does not exist".format(roomNb))
                         elif self.network == "AP2":

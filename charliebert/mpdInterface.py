@@ -282,10 +282,12 @@ class MpdInterface(PlayerInterface):
             self.logger.debug("Clearing playlist")
             self.client.clear()
             self.logger.debug("Initializing playlist")
-            playlistNameTmp = playlistName + '_tmp'
-            self.logger.debug("Deleting possibly existing playlist {}".format(playlistNameTmp))
+            #playlistNameTmp = playlistName + '_tmp'
+            #self.logger.debug("Deleting possibly existing playlist {}".format(playlistNameTmp))
+            self.logger.debug("Deleting possibly existing playlist {}".format(playlistName))
             try:
-                self.client.rm(playlistNameTmp)
+                #self.client.rm(playlistNameTmp)
+                self.client.rm(playlistName)
             except:
                 pass
             
@@ -300,14 +302,39 @@ class MpdInterface(PlayerInterface):
                 title = info[u'title']
                 trackNb = int(track)
 
-                self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-                #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
+                ###self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
+                ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+                #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+                #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+                self.client.findadd(u'artist', artist, u'album', album, u'title', title)
+
+            self.client.save(playlistName)
+
         except:
             self.logger.error("Problem adding playlist '{}'".format(playlistName))
+            raise
             return
         
         self.disconnect()            
             
+    def importAllPlaylists(self, room):
+        self.logger.debug("Importing all playlists")
+        
+        try:
+            room = u'Office'
+            playlistBasename = u'zCharliebert_'
+            
+            for bank in ('A', 'B', 'C', 'D'):
+                for nb in range(1, 13):             
+                    playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
+                    self.importPlaylist(playlistName, room)
+                    #return
+
+        except:
+            self.logger.error("Problem importing playlists")
+            raise
+
+
 if __name__ == '__main__':
     # Logging
 #    logging.basicConfig(filename='sonosInterface.log', 
@@ -327,6 +354,10 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
+        mi.importAllPlaylists('Office')
+        import sys
+        sys.exit()
+
         mi.importPlaylist('zCharliebert_A01', 'Office')
         mi.importPlaylist('zCharliebert_A02', 'Office')
         mi.importPlaylist('zCharliebert_A03', 'Office')
