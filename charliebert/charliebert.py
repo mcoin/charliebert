@@ -453,24 +453,30 @@ class ShutdownTimerThreadWorkaround(ShutdownTimerThread):
         while not self.stopper.is_set():
             self.reset.clear()
             self.time = 0
+            self.logger.debug("ShutdownTimerThreadWorkaround: Starting loop until shutdownTimePeriod or stopper or reset")
             while self.time < self.shutdownTimePeriod:
                 self.stopper.wait(self.timeInterval)
                 self.time += self.timeInterval
                 
                 # Exit right away if stop is requested
                 if self.stopper.is_set():
+                    self.logger.debug("ShutdownTimerThreadWorkaround: Stop requested, exiting right away (1)")
                     break
                 
                 if self.reset.is_set():
                     self.logger.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer")
                     break
             
+            self.logger.debug("ShutdownTimerThreadWorkaround: Out of loop until shutdownTimePeriod or stopper or reset")
+
             # Exit right away if stop is requested
             if self.stopper.is_set():
-                    break
+                self.logger.debug("ShutdownTimerThreadWorkaround: Stop requested, exiting right away (2)")
+                break
                     
             if self.reset.is_set():
                 # Just restart the loop
+                self.logger.debug("ShutdownTimerThreadWorkaround: Resetting the shutdown timer (restarting the loop)")
                 self.nbCanceledShutdowns = 0
             elif self.isCurrentlyPlaying() and self.nbCanceledShutdowns < self.maxNbCanceledShutdowns - 1:
                 # Do not shut down the Pi as we are still playing music

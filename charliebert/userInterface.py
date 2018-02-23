@@ -403,6 +403,7 @@ class UserInterface:
         self.activateAltModeCurrentNbOperations = self.nbOperations
         
     def deactivateAltMode(self):
+        self.logger.debug("Deactivating alt-mode")
         self.altMode = False
 
         # Make sure the number of operations has not changed since activating alt=mode
@@ -415,33 +416,44 @@ class UserInterface:
         changes = False
 
         # Check whether the active room has been changed:
+        self.logger.debug("Checking whether the active room has changed")
         curRoomNb = self.getActiveRoomNb()
-        if curRoomNb != self.currentRoomNb:
+        self.logger.debug("curRoomNb = {:d}".format(curRoomNb))
+        self.logger.debug("self.currentRoomNb = {}".format(self.currentRoomNb))
+        if self.currentRoomNb is not None and curRoomNb != self.currentRoomNb:
             self.logger.debug("The current room number has been changed to {:d} (used to be {:d})".format(curRoomNb, self.currentRoomNb))
             if curRoomNb == 0 or self.currentRoomNb == 0:
                 self.logger.error("Wrong room number, skipping command (curRoomNb = {}, self.currentRoomNb = {})".format(curRoomNb, self.currentRoomNb))
             else:
                 changes = True
+                self.logger.debug("Actually changing the currently active room")
                 self.u2pQueue.put("ROOM {:d}".format(curRoomNb))
             
         # Check whether the active network has been changed:
+        self.logger.debug("Checking whether the active network has changed")
         curNetworkNb = self.getActiveNetworkNb()
-        if curNetworkNb != self.currentNetworkNb:
+        self.logger.debug("curNetworkNb = {}".format(curNetworkNb))
+        if self.currentNetworkNb is not None and curNetworkNb != self.currentNetworkNb:
             self.logger.debug("The current network number has been changed to {:d} (used to be {:d})".format(curNetworkNb, self.currentNetworkNb))
             if curNetworkNb == 0 or self.currentNetworkNb == 0:
                 self.logger.error("Wrong network number, skipping command (curNetworkNb = {}, self.currentNetworkNb = {})".format(curNetworkNb, self.currentNetworkNb))
             else:
                 changes = True
+                self.logger.debug("Actually changing the currently active network")
                 self.u2pQueue.put("NET {:d}".format(curNetworkNb))
 
         if changes:
+            self.logger.debug("Changing the currently active speaker led indicator")
             self.setActiveSpeakerLeds(curNetworkNb, curRoomNb)
 
             
     def isAltModeOn(self):
+        self.logger.debug("Determining whether Alt-Mode is on")
         if self.altMode and GPIO.input(self.modePort) == GPIO.LOW:
+            self.logger.debug("Alt-Mode is on")
             return True 
         else:
+            self.logger.debug("Alt-Mode is off")
             self.deactivateAltMode()
             return False
         
@@ -497,14 +509,23 @@ class UserInterface:
         print("Edge detected on channel {:d} [Bank switch, alt. mode: {}, shift mode: {}]".format(channel, 
                                                                                     "ON" if self.isAltModeOn() else "OFF",
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
+        self.logger.debug("Increment bank or deactivate shift mode")
         if not self.isShiftModeOn():
+            self.logger.debug("Increment bank")
             self.incrementBank(self.isAltModeOn())
         else:
+            self.logger.debug("Deactivate shift mode")
             self.deactivateShiftMode()
         
+        self.logger.debug("Reset timer if applicable")
         if self.reset is not None:
+            self.logger.debug("Reset timer")
             self.reset.set()
+
+        self.logger.debug("Increment nb ops.")
         self.incrementNbOperations()
+
+        self.logger.debug("Over")
         
     # Callback for mode switch
     def callbackModeSwitch(self, channel):
