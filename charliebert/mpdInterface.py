@@ -253,7 +253,7 @@ class MpdInterface(PlayerInterface):
         
         return isCurrentlyPlaying
     
-    def importPlaylist(self, playlistName, room):
+    def importPlaylist(self, playlistName, room, overwrite=False):
         self.logger.debug("Importing playlist files")
         
         try:
@@ -266,7 +266,7 @@ class MpdInterface(PlayerInterface):
             self.logger.debug(u'Playlist {}'.format(playlist.name))
                 
             self.logger.debug("Copying files")
-            playlist.copyFiles(u'music', u'toma', u'', False, self.logger)
+            playlist.copyFiles(u'music', u'toma', u'', overwrite, self.logger)
                 
         except:
             self.logger.error("Error while importing playlist '{}'".format(playlistName))
@@ -306,6 +306,7 @@ class MpdInterface(PlayerInterface):
                 ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
                 #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}'".format(artist, album, title))
                 self.client.findadd(u'artist', artist, u'album', album, u'title', title)
 
             self.client.save(playlistName)
@@ -317,17 +318,16 @@ class MpdInterface(PlayerInterface):
         
         self.disconnect()            
             
-    def importAllPlaylists(self, room):
+    def importAllPlaylists(self, room, overwrite=False):
         self.logger.debug("Importing all playlists")
         
         try:
-            room = u'Office'
             playlistBasename = u'zCharliebert_'
             
             for bank in ('A', 'B', 'C', 'D'):
                 for nb in range(1, 13):             
                     playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
-                    self.importPlaylist(playlistName, room)
+                    self.importPlaylist(playlistName, room, overwrite)
                     #return
 
         except:
@@ -354,6 +354,10 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
+        #mi.importPlaylist('zCharliebert_A04', 'Office')
+        #import sys
+        #sys.exit()
+
         mi.importAllPlaylists('Office')
         import sys
         sys.exit()

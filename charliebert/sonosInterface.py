@@ -240,10 +240,15 @@ class SonosInterface(PlayerInterface):
             return False
             
     # Reads the details of a given playlist and save those to a file
-    def exportPlaylistDetails(self, playlistName, room, archiveDir=None):
+    def exportPlaylistDetails(self, playlistName, room, archiveDir=None, overwrite=False):
         self.logger.debug("exportPlaylistDetails")
         
         try:
+            # Check whether the playlist has already been exported
+            if not overwrite and os.path.isfile(u'playlists/{}.json'.format(playlistName)):
+                self.logger.debug(u'Playlist {} has already been exported: Skipping'.format(playlistName))
+                return
+
             sp = self.getSpeaker(room)
             
             # Clear queue to start with an empty state
@@ -310,7 +315,7 @@ class SonosInterface(PlayerInterface):
             return
 
     # Reads the details of all playlists and save those to json files
-    def exportAllPlaylists(self, room):
+    def exportAllPlaylists(self, room, overwrite=False):
         self.logger.debug("exportAllPlaylists")
         try:
                 
@@ -323,7 +328,7 @@ class SonosInterface(PlayerInterface):
             for bank in ('A', 'B', 'C', 'D'):
                 for nb in range(1, 13):             
                     playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
-                    self.exportPlaylistDetails(playlistName, room, archiveDir)
+                    self.exportPlaylistDetails(playlistName, room, archiveDir, overwrite)
         except:
             self.logger.error("Problem exporting playlists")
 
@@ -349,7 +354,7 @@ if __name__ == '__main__':
     try:
         si.printSpeakerList()
         
-        si.exportAllPlaylists('Office')
+        si.exportAllPlaylists('Office', True)
         import sys
         sys.exit()
         

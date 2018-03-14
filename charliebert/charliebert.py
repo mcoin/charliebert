@@ -256,7 +256,10 @@ class PlayerInterfaceThread(threading.Thread):
                         elif roomNb == 8:
                             self.changeNetwork("AP2")
                             self.room = "Obenauf"
-                        elif roomNb == 9:
+                        elif roomNb == 10:
+                            # Import sonos playlists - soft 
+                            # (only retrieve not yet exported sonos playlists,
+                            # and only copy not yet copied music files)
                             self.logger.debug("Exporting sonos playlists...")
                             self.si.exportAllPlaylists(u'Office')            
                             self.logger.debug("Done.")
@@ -264,11 +267,28 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office')            
                             self.logger.debug("Done.")                                                                                                   
-                        elif roomNb == 10:
-                            self.changeNetwork("aapx")
-                            self.room = "none"                                                                                                                                    
+                        elif roomNb == 11:
+                            # Import sonos playlists - medium
+                            # (renew sonos playlist definitions,
+                            # but only copy not yet copied music files)
+                            self.logger.debug("Exporting sonos playlists...")
+                            self.si.exportAllPlaylists(u'Office', True)            
+                            self.logger.debug("Done.")
+                            
+                            self.logger.debug("Importing playlists into MPD...")
+                            self.mi.importAllPlaylists(u'Office')            
+                            self.logger.debug("Done.")                                                                                                   
                         elif roomNb == 12:
-                            self.room = "Charliebert"
+                            # Import sonos playlists - hard
+                            # (renew sonos playlist definitions,
+                            # and also overwrite already copied music files)
+                            self.logger.debug("Exporting sonos playlists...")
+                            self.si.exportAllPlaylists(u'Office', True)            
+                            self.logger.debug("Done.")
+                            
+                            self.logger.debug("Importing playlists into MPD...")
+                            self.mi.importAllPlaylists(u'Office', True)
+                            self.logger.debug("Done.")                                                                                                   
 
                         else:
                             self.logger.error("Command ROOM/NET: {:d}: Room does not exist".format(roomNb))
