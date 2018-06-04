@@ -160,9 +160,13 @@ class PlayerInterface():
     def offsetStartPlaylist(self, playlistName):
         self.logger.debug("offsetStartPlaylist")
         currentTime = time.time()
+        self.logger.debug("offsetStartPlaylist: {} s since the last playlist command".format(currentTime - self.timeLastStartPlaylist))
+        
         if currentTime - self.timeLastStartPlaylist < self.minTimePlaylist:
-            self.logger.debug("Discarding command to start playlist {} (issued {} after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
+            self.logger.debug("Discarding command to start playlist {} (issued {} s after the last playlist command)".format(playlistName, currentTime - self.timeLastStartPlaylist))
             return True
+        
+        self.logger.debug("offsetStartPlaylist: Allowing start playlist command".format(currentTime - self.timeLastStartPlaylist))
         
         self.timeLastStartPlaylist = currentTime
         self.cancelOffsetStartPlaylist = False
