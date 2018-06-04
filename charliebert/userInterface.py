@@ -245,13 +245,13 @@ class UserInterface:
         # Define callbacks for switch presses
         for port, name in self.switches.items():
             if name == self.bankSwitch:
-                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackBankSwitch, bouncetime=500)
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackBankSwitch, bouncetime=1000)
             elif name == self.modeSwitch:
-                GPIO.add_event_detect(port, GPIO.BOTH, callback=self.callbackModeSwitch, bouncetime=500)
+                GPIO.add_event_detect(port, GPIO.BOTH, callback=self.callbackModeSwitch, bouncetime=1000)
             elif port in self.switchNbs:
-                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=500)  
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackSwitch, bouncetime=1000)  
             else:
-                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackControlSwitch, bouncetime=500)
+                GPIO.add_event_detect(port, GPIO.FALLING, callback=self.callbackControlSwitch, bouncetime=1000)
                 
     def initLeds(self):
         # LEDs for the different playlist banks: Ports and names
