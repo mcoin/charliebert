@@ -102,6 +102,8 @@ class SonosInterface(PlayerInterface):
         if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
             return
         
+        self.cancelOffsetStartPlaylist = False
+        
         try:
             sp = self.getSpeaker(room)
             

@@ -136,7 +136,7 @@ class PlayerInterface():
         # Limitations
         self.minVolume = 10 # Make sure the music is audible...
         self.maxVolume = 50 # ...but not painful
-        self.minTimePlaylist = 10 # (seconds) Time before starting another playlist is allowed
+        self.minTimePlaylist = 30 # (seconds) Time before starting another playlist is allowed
         self.timeLastStartPlaylist = time.time() - self.minTimePlaylist # Make sure we can start a playlist right away
         self.cancelOffsetStartPlaylist = False # True if the playlist has been stopped before the end of the offset time
         
@@ -174,6 +174,7 @@ class PlayerInterface():
         if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
             return
         
+        self.cancelOffsetStartPlaylist = False
 
     def playTrackNb(self, trackNb, room):
         self.logger.debug("playTrackNb")
