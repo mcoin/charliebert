@@ -269,6 +269,9 @@ class SonosInterface(PlayerInterface):
             
             playlist = Playlist(playlistName)
             
+            sp.play()
+            sp.pause()
+            
             # Retrieve track info for each item in the queue
             itemNb = 0
             while itemNb < queueSize:
@@ -294,6 +297,8 @@ class SonosInterface(PlayerInterface):
                     break
                 
 #             json = playlist.toJSON()
+            
+            sp.stop()
             
             try:
                 os.mkdir(u'playlists')
@@ -354,9 +359,11 @@ if __name__ == '__main__':
     logger.info("Creating instance of SonosInterface") 
     si = SonosInterface(logger)
     try:
-        si.printSpeakerList()
+        si.printSpeakerList()        
         
-        si.exportAllPlaylists('Office', True)
+        
+        #si.exportAllPlaylists('Office', True)
+        si.exportPlaylistDetails('zCharliebert_A01', 'Office')
         import sys
         sys.exit()
         

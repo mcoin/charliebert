@@ -266,7 +266,7 @@ class MpdInterface(PlayerInterface):
             self.logger.debug(u'Playlist {}'.format(playlist.name))
                 
             self.logger.debug("Copying files")
-            playlist.copyFiles(u'music', u'toma', u'', overwrite, self.logger)
+            playlist.copyFiles(u'music', u'toma', u'', overwrite, False, self.logger)
                 
         except:
             self.logger.error("Error while importing playlist '{}'".format(playlistName))

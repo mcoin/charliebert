@@ -49,12 +49,19 @@ class Playlist:
             self.tracks = data[u'tracks']
 #             logger.debug(u'All set')
 
-    def copyFiles(self, destDir, user, password, overwrite=False, logger=None):
+    def copyFiles(self, destDir, user, password, overwrite=False, basename=False, logger=None):
+        if logger is not None:
+            logger.debug(u'Playlist.copyFiles')
+            
         try:
             os.mkdir(destDir)
         except OSError:
-            pass
-        
+            if logger is not None:
+                logger.debug(u'Error while making dir {}'.format(destDir))
+
+        if logger is not None:
+            logger.debug(u'Copying tracks')
+                    
         try:
             for track in self.tracks:
                 file = self.tracks[track][u'uri']
@@ -67,6 +74,9 @@ class Playlist:
                 share = u'{}'.format(m.group(2))
                 path = u'{}'.format(m.group(3))
                 target= u'{}'.format(m.group(3))
+                
+                if basename:
+                    target = os.path.basename(target)
                 
                 if logger is not None:
                     logger.debug(u'server = {}\nshare = {}\npath = {}\ntarget = {}'.format(server, share, path, target))
