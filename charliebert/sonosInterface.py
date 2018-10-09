@@ -191,41 +191,50 @@ class SonosInterface(PlayerInterface):
           
     def adjustVolume(self, volumeDelta, room):
         try:
-            oldVol = None
-            newVol = None
             volumeDelta = int(round(volumeDelta))
-            sp = self.getSpeaker(room)
-            oldVol = sp.volume
-            newVol = oldVol + volumeDelta
+            targetSp = self.getSpeaker(room)
             
-            # Enforce volume limits
-            if newVol < self.minVolume:
-                self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
-                sp.volume = self.minVolume
-            elif newVol > self.maxVolume:
-                self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
-                sp.volume = self.maxVolume
-            else:
-                sp.volume += volumeDelta
-            newVol = sp.volume
+            for sp in targetSp.group.members:
+                oldVol = None
+                newVol = None
+                try:
+                    oldVol = sp.volume
+                    newVol = oldVol + volumeDelta
+                    
+                    # Enforce volume limits
+                    if newVol < self.minVolume:
+                        self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                        sp.volume = self.minVolume
+                    elif newVol > self.maxVolume:
+                        self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                        sp.volume = self.maxVolume
+                    else:
+                        sp.volume += volumeDelta
+                    newVol = sp.volume
+                except:
+                    self.logger.error("Problem adjusting volume for room {} (old volume: {:d}, new volume: {:d}, delta: {:d})".format(sp.player_name, oldVol, newVol, volumeDelta))
         except:
             self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d}, delta: {:d})".format(oldVol, newVol, volumeDelta))
 
     def soundCheck(self, room):
-        vol = -1
-        newVol = -1
         try:
-            sp = self.getSpeaker(room)
-            vol = sp.volume
-            
-            # Enforce volume limits
-            if vol < self.minVolume:
-                self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
-                sp.volume = self.minVolume
-            elif vol > self.maxVolume:
-                self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
-                sp.volume = self.maxVolume
-            newVol = sp.volume
+            targetSp = self.getSpeaker(room)
+            for sp in targetSp.group.members:
+                vol = -1
+                newVol = -1
+                try:
+                    vol = sp.volume
+                    
+                    # Enforce volume limits
+                    if vol < self.minVolume:
+                        self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                        sp.volume = self.minVolume
+                    elif vol > self.maxVolume:
+                        self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                        sp.volume = self.maxVolume
+                    newVol = sp.volume
+                except:
+                    self.logger.error("Problem adjusting volume for room {} (old volume: {:d}, new volume: {:d})".format(sp.player_name, vol, newVol))
         except:
             self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
 
