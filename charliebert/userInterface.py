@@ -487,14 +487,16 @@ class UserInterface:
         
     # Callback for switches (start playlist)
     def callbackSwitch(self, channel):
-        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
+        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {}, alt-playlist mode: {})".format(self.switches[channel], 
                                                                                channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
-                                                                               "ON" if self.isShiftModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}]".format(channel, 
+                                                                               "ON" if self.isShiftModeOn() else "OFF",
+                                                                               "ON" if self.isAltPlaylistModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}, alt-playlist mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF",
-                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
+                                                                                    "ON" if self.isShiftModeOn() else "OFF",
+                                                                                    "ON" if self.isAltPlaylistModeOn() else "OFF"))
 
         if self.u2pQueue is not None:
             try:
@@ -560,14 +562,16 @@ class UserInterface:
         
      # Callback for switches (play/pause, skip forward/backward)
     def callbackControlSwitch(self, channel):
-        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(self.switches[channel], 
+        self.logger.debug("Switch {} pressed (channel {:d}, alt. mode: {}, shift mode: {}, alt-playlist mode: {})".format(self.switches[channel], 
                                                                                channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
-                                                                               "ON" if self.isShiftModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}]".format(channel, 
+                                                                               "ON" if self.isShiftModeOn() else "OFF",
+                                                                               "ON" if self.isAltPlaylistModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Switch ID: {}, alt. mode: {}, shift mode: {}, alt-playlist mode: {}]".format(channel, 
                                                                                     self.switches[channel], 
                                                                                     "ON" if self.isAltModeOn() else "OFF",
-                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
+                                                                                    "ON" if self.isShiftModeOn() else "OFF",
+                                                                                    "ON" if self.isAltPlaylistModeOn() else "OFF"))
 
         if self.switches[channel] == self.playSwitch and self.isShiftModeOn():
             self.deactivateShiftMode()
