@@ -686,8 +686,8 @@ class UserInterface:
         # Start blinking
         if not self.blinkingOne and self.isAltPlaylistModeOn():
             self.blinkingOne = True
-#             # Switch on all leds
-#             self.switchAllLeds(True)
+            # Switch off all leds
+            self.switchAllLeds(False)
             self.blinkRefTime = time.time()
             self.blinkState = True
             return
