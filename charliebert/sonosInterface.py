@@ -96,6 +96,29 @@ class SonosInterface(PlayerInterface):
             sp = self.speakers[room]
             
             return sp.group.coordinator
+
+    def startPlaylistBare(self, playlistName, room):
+        # Bare function to start a playlist; throws an exception if unsuccessful
+        # USE startPlaylist INSTEAD!!
+        sp = self.getSpeaker(room)
+        
+        # Make sure we won't go deaf right now
+        self.soundCheck(room)
+        
+        if playlistName == self.playlistName:
+            # Starting the same playlist again: Just start playing from the beginning again
+            # without appending the tracks to the queue once more
+            sp.play_from_queue(self.indexBegPlaylist)
+            return
+        
+        playlist = sp.get_sonos_playlist_by_attr('title', playlistName)
+        self.playlistName = playlistName
+        oldQueueSize = sp.queue_size
+        self.indexBegPlaylist = oldQueueSize
+        sp.add_to_queue(playlist)
+        self.queueSize = sp.queue_size
+        self.playlistSize = self.queueSize - oldQueueSize
+        sp.play_from_queue(self.indexBegPlaylist)
         
     def startPlaylist(self, playlistName, room):
         # Discard commands that are issued too briefly after the last
@@ -103,31 +126,29 @@ class SonosInterface(PlayerInterface):
             return
         
         self.cancelOffsetStartPlaylist = False
-        
+
         try:
-            sp = self.getSpeaker(room)
-            
-            # Make sure we won't go deaf right now
-            self.soundCheck(room)
-            
-            if playlistName == self.playlistName:
-                # Starting the same playlist again: Just start playing from the beginning again
-                # without appending the tracks to the queue once more
-                sp.play_from_queue(self.indexBegPlaylist)
-                return
-            
-            playlist = sp.get_sonos_playlist_by_attr('title', playlistName)
-            self.playlistName = playlistName
-            oldQueueSize = sp.queue_size
-            self.indexBegPlaylist = oldQueueSize
-            sp.add_to_queue(playlist)
-            self.queueSize = sp.queue_size
-            self.playlistSize = self.queueSize - oldQueueSize
-            sp.play_from_queue(self.indexBegPlaylist)
+            self.startPlaylistBare(playlistName, room)
         except:
             self.logger.error("Problem playing playlist '{}'".format(playlistName))
+        
+    def startPlaylistAlt(self, playlistName, room):
+        # Discard commands that are issued too briefly after the last
+        if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
             return
-
+        
+        self.cancelOffsetStartPlaylist = False        
+        
+        try:
+            altPlaylistName = u'{}_alt'.format(playlistName)
+            self.startPlaylistBare(altPlaylistName, room)
+        except:  
+            self.logger.error("Problem playing alt. playlist '{}'; will fall back to playlist {}".format(altPlaylistName, playlistName))
+            try:
+                self.startPlaylistBare(playlistName, room)
+            except:  
+                self.logger.error("Problem playing playlist '{}'".format(playlistName))
+                                
     def playTrackNb(self, trackNb, room):
         if trackNb < 1:
             self.logger.error("Cannot play track number {:d}".format(trackNb))
@@ -370,7 +391,12 @@ if __name__ == '__main__':
     try:
         si.printSpeakerList()        
         
-        
+        #si.startPlaylistAlt("zCharliebert_A03", "Office")
+        si.startPlaylist("zCharliebert_A03", "Office")
+
+        import sys
+        sys.exit()
+                
         #si.exportAllPlaylists('Office', True)
         si.exportPlaylistDetails('zCharliebert_A01', 'Office')
         import sys

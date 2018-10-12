@@ -66,7 +66,29 @@ class MpdInterface(PlayerInterface):
         self.disconnect()
         
         return True
+
+    def startPlaylistBare(self, playlistName, room):
+        # Make sure we won't go deaf right now
+        self.soundCheck(room)
         
+        if playlistName == self.playlistName:
+            # Starting the same playlist again: Just start playing from the beginning again
+            # without appending the tracks to the queue once more
+            self.logger.debug("Playlist {} already active: Restarting from first song".format(playlistName))
+            client.play(0)
+            return        
+        
+        self.logger.debug("Clearing playlist")
+        self.client.clear()
+        self.logger.debug("Loading playlist")
+        self.client.load(playlistName)
+        self.logger.debug("Starting playlist")
+        self.client.play(0)
+        
+        self.playlistSize = len(self.client.playlistinfo())
+        self.queueSize = self.playlistSize
+        self.logger.debug("Number of songs in the playlist: {:d}".format(self.playlistSize))        
+    
     def startPlaylist(self, playlistName, room):
         self.logger.debug("Starting playlist {}".format(playlistName))
         # Discard commands that are issued too briefly after the last
@@ -77,30 +99,31 @@ class MpdInterface(PlayerInterface):
         self.connect()
         
         try:    
-            # Make sure we won't go deaf right now
-            self.soundCheck(room)
-            
-            if playlistName == self.playlistName:
-                # Starting the same playlist again: Just start playing from the beginning again
-                # without appending the tracks to the queue once more
-                self.logger.debug("Playlist {} already active: Restarting from first song".format(playlistName))
-                client.play(0)
-                return        
-            
-            self.logger.debug("Clearing playlist")
-            self.client.clear()
-            self.logger.debug("Loading playlist")
-            self.client.load(playlistName)
-            self.logger.debug("Starting playlist")
-            self.client.play(0)
-            
-            self.playlistSize = len(self.client.playlistinfo())
-            self.queueSize = self.playlistSize
-            self.logger.debug("Number of songs in the playlist: {:d}".format(self.playlistSize))
-            
+            self.startPlaylistBare(playlistName, room)
         except:
             self.logger.error("Problem playing playlist '{}'".format(playlistName))
             return
+        
+        self.disconnect()        
+        
+    def startPlaylistAlt(self, playlistName, room):
+        self.logger.debug("Starting playlist {}".format(playlistName))
+        # Discard commands that are issued too briefly after the last
+        if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
+            self.logger.debug("Aborting: Playlist already started not long ago")
+            return
+        
+        self.connect()
+        
+        try:    
+            altPlaylistName = u'{}_alt'.format(playlistName)
+            self.startPlaylistBare(altPlaylistName, room)
+        except:
+            try:
+                self.startPlaylistBare(playlistName, room)
+            except:
+                self.logger.error("Problem playing playlist '{}'".format(playlistName))
+                return
         
         self.disconnect()
 

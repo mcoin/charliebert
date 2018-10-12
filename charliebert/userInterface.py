@@ -234,6 +234,9 @@ class UserInterface:
         self.altMode = False
         # Indicate whether alternate mode 2 (shift) is on (upon holding down the Mode & Play buttons)
         self.shiftMode = False
+        # Indicate whether alternate mode 3 (alt-playlist) is on (upon holding down the Mode & Foraward buttons)
+        self.altPlaylistMode = False        
+        
         # Set ports as input with pull-up resistor
         for s, name in self.switches.items():
             GPIO.setup(s, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -469,7 +472,15 @@ class UserInterface:
     def deactivateShiftMode(self):
         self.shiftMode = False
     def isShiftModeOn(self):
-            return self.shiftMode
+        return self.shiftMode
+
+    def activateAltPlaylistMode(self):
+        self.altPlaylistMode = True
+        self.altMode = False
+    def deactivateAltPlaylistMode(self):
+        self.altPlaylistMode = False
+    def isAltPlaylistModeOn(self):
+        return self.altPlaylistMode
 
         
     # Callback for switches (start playlist)
@@ -489,6 +500,8 @@ class UserInterface:
                     self.u2pQueue.put("TRACK {:d}".format(self.getSwitch(channel)))
                 elif self.isShiftModeOn():
                     self.u2pQueue.put("ROOM {:d}".format(self.getSwitch(channel)))
+                elif self.isAltPlaylistModeOn():
+                    self.u2pQueue.put("ALTPLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
                 else:
                     self.u2pQueue.put("PLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
             except:
@@ -497,18 +510,23 @@ class UserInterface:
         if self.isShiftModeOn():
             self.deactivateShiftMode()
             
+        if self.isAltPlaylistModeOn():
+            self.deactivateAltPlaylistMode()
+            
         if self.reset is not None:
             self.reset.set()
         self.incrementNbOperations()
         
     # Callback for bank switch 
     def callbackBankSwitch(self, channel):
-        self.logger.debug("Bank switch pressed (channel {:d}, alt. mode: {}, shift mode: {})".format(channel, 
+        self.logger.debug("Bank switch pressed (channel {:d}, alt. mode: {}, shift mode: {}, alt-playlist mode: {})".format(channel, 
                                                                                "ON" if self.isAltModeOn() else "OFF",
-                                                                               "ON" if self.isShiftModeOn() else "OFF"))
-        print("Edge detected on channel {:d} [Bank switch, alt. mode: {}, shift mode: {}]".format(channel, 
+                                                                               "ON" if self.isShiftModeOn() else "OFF",
+                                                                               "ON" if self.isAltPlaylistModeOn() else "OFF"))
+        print("Edge detected on channel {:d} [Bank switch, alt. mode: {}, shift mode: {}, alt-playlist mode: {}]".format(channel, 
                                                                                     "ON" if self.isAltModeOn() else "OFF",
-                                                                                    "ON" if self.isShiftModeOn() else "OFF"))
+                                                                                    "ON" if self.isShiftModeOn() else "OFF",
+                                                                                    "ON" if self.isAltPlaylistModeOn() else "OFF"))
         self.logger.debug("Increment bank or deactivate shift mode")
         if not self.isShiftModeOn():
             self.logger.debug("Increment bank")
@@ -550,27 +568,34 @@ class UserInterface:
                                                                                     "ON" if self.isShiftModeOn() else "OFF"))
 
         if self.switches[channel] == self.playSwitch and self.isShiftModeOn():
-            if self.switches[channel] == self.playSwitch:
-                self.deactivateShiftMode()
+            self.deactivateShiftMode()
+        elif self.switches[channel] == self.forwardSwitch and self.isAltPlaylistModeOn():
+            self.deactivateAltPlaylistMode()
         else:
             if self.u2pQueue is not None:
                 try:
                     if self.switches[channel] == self.playSwitch and not self.isAltModeOn():
                         self.u2pQueue.put("PLAY/PAUSE")
-                    elif self.switches[channel] == self.forwardSwitch:
+                    elif self.switches[channel] == self.forwardSwitch and not self.isAltModeOn():
                         self.u2pQueue.put("FORWARD")
                     elif self.switches[channel] == self.backSwitch and not self.isAltModeOn():
                         self.u2pQueue.put("BACK")
                 except:
                     pass
 
-        if self.switches[channel] == self.backSwitch and self.isAltModeOn():
-            # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
-            self.initiateSwitchOff()
-
         if self.switches[channel] == self.playSwitch and self.isAltModeOn():
             # Key combination: If Mode + Play are pressed together, switch to shift mode (select room with playlist buttons) 
             self.activateShiftMode()
+            self.deactivateAltPlaylistMode()
+            
+        if self.switches[channel] == self.forwardSwitch and self.isAltModeOn():
+            # Key combination: If Mode + Forward are pressed together, switch to alt-playlist mode (start an alternative playlist) 
+            self.activateAltPlaylistMode()
+            self.deactivateShiftMode()
+
+        if self.switches[channel] == self.backSwitch and self.isAltModeOn():
+            # Key combination: If Mode + Back are pressed together for a certain time, switch off the pi  
+            self.initiateSwitchOff()
             
         if self.reset is not None:
             self.reset.set()
@@ -649,6 +674,41 @@ class UserInterface:
                 self.blinkRefTime = time.time()
                 self.blinkState = not self.blinkState
                 self.switchAllLeds(self.blinkState)
+                
+    # When alt-playlist mode is on, signal it by blinking the current bank led until a playlist is selected or forward is pressed anew    
+    def blinkLedsForAltPlaylist(self):
+        # Not in alt-playlist mode: Nothing to do
+        if not self.blinking and not self.isAltPlaylistModeOn():
+            return
+        
+        # Start blinking
+        if not self.blinking and self.isAltPlaylistModeOn():
+            self.blinking = True
+#             # Switch on all leds
+#             self.switchAllLeds(True)
+            self.blinkRefTime = time.time()
+            self.blinkState = True
+            return
+            
+        # Stop blinking
+        if self.blinking and not self.isAltPlaylistModeOn():
+            self.blinking = False
+            # Switch on only the led corresponding to the current bank 
+            self.incrementBank(False, True)
+            return
+            
+        # Continue blinking
+        if self.blinking and self.isAltPlaylistModeOn():
+            # Alternately switch on and off all leds
+            if time.time() - self.blinkRefTime >= self.blinkPeriod:
+                self.blinkRefTime = time.time()
+                self.blinkState = not self.blinkState
+                if self.blinkState:
+                    # Switch off all leds
+                    self.switchAllLeds(False)
+                else:
+                    # Switch on only the led corresponding to the current bank 
+                    self.incrementBank(False, True)                                      
         
     def processCommands(self):
         if not self.p2uQueue.empty():
@@ -703,6 +763,7 @@ class UserInterface:
                         pass
                     
                 self.blinkLedsForShift()
+                self.blinkLedsForAltPlaylist()
  
         except KeyboardInterrupt:
             self.logger.info("Stop (Ctrl-C from main loop)") 

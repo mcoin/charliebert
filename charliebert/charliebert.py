@@ -194,6 +194,13 @@ class PlayerInterfaceThread(threading.Thread):
                         playlistName = "{0}_{1}{2:02d}".format(self.playlistBasename, bank, bankNb)
                         self.logger.debug("Starting playlist {}".format(playlistName))
                         self.pi.startPlaylist(playlistName, self.room)
+                    elif m.group(1) == "ALTPLAYLIST":
+                        bank = m.group(3)
+                        bankNb = int(m.group(5))
+                        self.logger.debug("Command PLAYLIST: {} {:d}".format(bank, bankNb))
+                        playlistName = "{0}_{1}{2:02d}".format(self.playlistBasename, bank, bankNb)
+                        self.logger.debug("Starting playlist {}".format(playlistName))
+                        self.pi.startPlaylistAlt(playlistName, self.room)
                     elif m.group(1) == "TRACK":
                         trackNb = int(m.group(5))
                         self.logger.debug("Command TRACK: {:d}".format(trackNb))

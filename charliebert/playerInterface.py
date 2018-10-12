@@ -189,6 +189,14 @@ class PlayerInterface():
             return
         
         self.cancelOffsetStartPlaylist = False
+        
+    def startPlaylistAlt(self, playlistName, room):
+        self.logger.debug("startPlaylistAlt")
+        # Discard commands that are issued too briefly after the last
+        if not self.cancelOffsetStartPlaylist and self.offsetStartPlaylist(playlistName):
+            return
+        
+        self.cancelOffsetStartPlaylist = False
 
     def playTrackNb(self, trackNb, room):
         self.logger.debug("playTrackNb")
