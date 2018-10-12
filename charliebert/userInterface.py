@@ -50,6 +50,8 @@ class UserInterface:
                 
         # Indicator for shift mode: if true, blink all bank leds
         self.blinking = False
+        # Indicator for alt/playlist mode: if true, blink the current bank led
+        self.blinkingOne = False
         # Period for blinking leds (in seconds)
         self.blinkPeriod = 0.5
         
@@ -678,12 +680,12 @@ class UserInterface:
     # When alt-playlist mode is on, signal it by blinking the current bank led until a playlist is selected or forward is pressed anew    
     def blinkLedsForAltPlaylist(self):
         # Not in alt-playlist mode: Nothing to do
-        if not self.blinking and not self.isAltPlaylistModeOn():
+        if not self.blinkingOne and not self.isAltPlaylistModeOn():
             return
         
         # Start blinking
-        if not self.blinking and self.isAltPlaylistModeOn():
-            self.blinking = True
+        if not self.blinkingOne and self.isAltPlaylistModeOn():
+            self.blinkingOne = True
 #             # Switch on all leds
 #             self.switchAllLeds(True)
             self.blinkRefTime = time.time()
@@ -691,14 +693,14 @@ class UserInterface:
             return
             
         # Stop blinking
-        if self.blinking and not self.isAltPlaylistModeOn():
-            self.blinking = False
+        if self.blinkingOne and not self.isAltPlaylistModeOn():
+            self.blinkingOne = False
             # Switch on only the led corresponding to the current bank 
             self.incrementBank(False, True)
             return
             
         # Continue blinking
-        if self.blinking and self.isAltPlaylistModeOn():
+        if self.blinkingOne and self.isAltPlaylistModeOn():
             # Alternately switch on and off all leds
             if time.time() - self.blinkRefTime >= self.blinkPeriod:
                 self.blinkRefTime = time.time()
