@@ -55,10 +55,15 @@ class UserInterface:
         # Period for blinking leds (in seconds)
         self.blinkPeriod = 0.5
         
+        # Progress indicator: Cycle through all speaker leds while completing a task
+        self.cyclingSpeakerLeds = False
+        self.progress = False
+        
         # SMBUS stuff for additional ports via MCP23017 chip
         self.initMcp()
         self.currentRoomNb = None
         self.currentNetworkNb = None
+        self.codeForCyclingSpeakerLeds = None
 
         # Parser for the p2u queue
         self.parser = re.compile("^([A-Z/]+)(\s+([A-Z]+))*(\s+([-0-9]+))*(\s*;\s+([-0-9]+))*\s*$")
@@ -180,6 +185,29 @@ class UserInterface:
             self.writeMcp('GPIOA', sw)
         except:
             self.logger.error("Error setting the room & network leds")
+
+    def cycleSpeakerLeds(self):
+        #self.logger.debug("cycleSpeakerLeds")
+        try:
+            if self.codeForCyclingSpeakerLeds == 0x40:
+                self.codeForCyclingSpeakerLeds = 0x80
+            elif self.codeForCyclingSpeakerLeds == 0x80:
+                self.codeForCyclingSpeakerLeds = 0x10
+            elif self.codeForCyclingSpeakerLeds == 0x10:
+                self.codeForCyclingSpeakerLeds = 0x04
+            elif self.codeForCyclingSpeakerLeds == 0x04:
+                self.codeForCyclingSpeakerLeds = 0x08
+            elif self.codeForCyclingSpeakerLeds == 0x08:
+                self.codeForCyclingSpeakerLeds = 0x20
+            elif self.codeForCyclingSpeakerLeds == 0x20:
+                self.codeForCyclingSpeakerLeds = 0x40
+            else:
+                self.codeForCyclingSpeakerLeds = 0x40
+                
+            #self.logger.debug("self.codeForCyclingSpeakerLeds = {}".format(self.codeForCyclingSpeakerLeds))
+            self.writeMcp('GPIOA', self.codeForCyclingSpeakerLeds)
+        except:
+            self.logger.error("Error cycling the room leds")
         
     
     def initSwitches(self):
@@ -503,7 +531,7 @@ class UserInterface:
                 if self.isAltModeOn():
                     self.u2pQueue.put("TRACK {:d}".format(self.getSwitch(channel)))
                 elif self.isShiftModeOn():
-                    self.u2pQueue.put("ROOM {:d}".format(self.getSwitch(channel)))
+                    self.u2pQueue.put("COMMAND {:d}".format(self.getSwitch(channel)))
                 elif self.isAltPlaylistModeOn():
                     self.u2pQueue.put("ALTPLAYLIST {} {:d}".format(self.getBank(), self.getSwitch(channel)))
                 else:
@@ -716,6 +744,30 @@ class UserInterface:
                     # Switch on only the led corresponding to the current bank 
                     self.incrementBank(False, True)                                      
         
+    # When performing an action (e.g. syncing playlists), signal it by cycling all speaker leds until completion    
+    def cycleSpeakerLedsForProgress(self):
+        # Not in shift mode: Nothing to do
+        if not self.cyclingSpeakerLeds and not self.progress:
+            return
+        
+        # Start cycling
+        if not self.cyclingSpeakerLeds and self.progress:
+            self.cyclingSpeakerLeds = True
+            
+        # Stop cycling
+        if self.cyclingSpeakerLeds and not self.progress:
+            self.cyclingSpeakerLeds = False
+            # Switch on only the led corresponding to the current room/network 
+            self.setActiveSpeakerLeds(self.curNetworkNb, self.curRoomNb)
+            return
+            
+        # Continue cycling
+        if self.cyclingSpeakerLeds and self.progress:
+            # Cycle through all speaker leds
+            if time.time() - self.blinkRefTime >= self.blinkPeriod:
+                self.blinkRefTime = time.time()
+                self.cycleSpeakerLeds()
+                
     def processCommands(self):
         if not self.p2uQueue.empty():
             command = self.p2uQueue.get(False)
@@ -728,6 +780,13 @@ class UserInterface:
                     roomIndex = int(m.group(7))
                     self.logger.debug("Command NETWORK ({:d}) / ROOM ({:d})".format(networkIndex, roomIndex))
                     self.setActiveSpeakerLeds(networkIndex, roomIndex)
+                elif m.group(1) == "PROGRESS":
+                    if (m.group(3) == "START"):
+                        self.logger.debug("Command PROGRESS START")
+                        self.progress = True
+                    elif (m.group(3) == "STOP"):
+                        self.logger.debug("Command PROGRESS STOP")
+                        self.progress = False
                 else:
                    raise 
             except:

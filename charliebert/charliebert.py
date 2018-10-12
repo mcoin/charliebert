@@ -1,5 +1,6 @@
 import time
 import threading
+from time import sleep
 try:
     import Queue as Q # For python 2
 except:
@@ -224,46 +225,15 @@ class PlayerInterfaceThread(threading.Thread):
                         except:
                             self.logger.debug("Could not set stopper")
 
-                    elif m.group(1) == "ROOM/NET":
-                        roomNb = int(m.group(5))
-                        self.logger.debug("Command ROOM/NET: {:d}".format(roomNb))
+                    elif m.group(1) == "COMMAND":
+                        commandNb = int(m.group(5))
+                        self.logger.debug("Command COMMAND: {:d}".format(commandNb))
 
-                        if roomNb == 12:
-                            if self.player != "Mpd":
-                                self.player = "Mpd"
-                                self.logger.debug("Switching player to MPD")
-                                self.pi = self.mi
-                        else:
-                            if self.player != "Sonos":
-                                self.player = "Sonos"
-                                self.logger.debug("Switching player to Sonos")
-                                self.pi = self.si
-
-                        if roomNb == 1:
-                            self.changeNetwork("aantgr")
-                            self.room = "Bedroom"
-                        elif roomNb == 2:
-                            self.changeNetwork("aantgr")
-                            self.room = "Bathroom"
-                        elif roomNb == 3:
-                            self.changeNetwork("aantgr")
-                            self.room = "Office"  
-                        elif roomNb == 4:
-                            self.changeNetwork("aantgr")
-                            self.room = "Kitchen"  
-                        elif roomNb == 5:
-                            self.changeNetwork("aantgr")
-                            self.room = "Living Room"  
-                        elif roomNb == 6:
-                            self.changeNetwork("aantgr")
-                            self.room = "Charlie's Room"                                                                                                                                    
-                        elif roomNb == 7:
-                            self.changeNetwork("AP2")
-                            self.room = "Wohnzimmer"                                                                                                                                    
-                        elif roomNb == 8:
-                            self.changeNetwork("AP2")
-                            self.room = "Obenauf"
-                        elif roomNb == 10:
+                        if commandNb == 1:
+                            self.p2uQ.put("PROGRESS START")
+                            time.sleep(10)
+                            self.p2uQ.put("PROGRESS STOP")
+                        elif commandNb == 10:
                             # Import sonos playlists - soft 
                             # (only retrieve not yet exported sonos playlists,
                             # and only copy not yet copied music files)
@@ -274,7 +244,7 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office')            
                             self.logger.debug("Done.")                                                                                                   
-                        elif roomNb == 11:
+                        elif commandNb == 11:
                             # Import sonos playlists - medium
                             # (renew sonos playlist definitions,
                             # but only copy not yet copied music files)
@@ -285,7 +255,7 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office')            
                             self.logger.debug("Done.")                                                                                                   
-                        elif roomNb == 12:
+                        elif commandNb == 12:
                             # Import sonos playlists - hard
                             # (renew sonos playlist definitions,
                             # and also overwrite already copied music files)
@@ -298,7 +268,7 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Done.")                                                                                                   
 
                         else:
-                            self.logger.error("Command ROOM/NET: {:d}: Room does not exist".format(roomNb))
+                            self.logger.error("Command COMMAND: {:d}: Command does not exist".format(commandNb))
 
                         self.logger.debug("Current room: {}".format(self.room))
                         self.logger.debug("Current network: {}".format(self.network))
