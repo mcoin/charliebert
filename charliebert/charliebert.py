@@ -232,6 +232,15 @@ class PlayerInterfaceThread(threading.Thread):
                         if commandNb == 1:
                             self.p2uQ.put("PROGRESS START")
                             time.sleep(10)
+
+			    #time = 0
+			    #timeInterval = 1
+    			    #timer = threading.Event()
+			    #duration = 10
+            		    #while time < duration:
+			#	timer.wait(timeInterval)
+			#	time += timeInterval
+
                             self.p2uQ.put("PROGRESS STOP")
                         elif commandNb == 10:
                             # Import sonos playlists - soft 

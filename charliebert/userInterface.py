@@ -746,25 +746,33 @@ class UserInterface:
         
     # When performing an action (e.g. syncing playlists), signal it by cycling all speaker leds until completion    
     def cycleSpeakerLedsForProgress(self):
-        # Not in shift mode: Nothing to do
+        #self.logger.debug("cycleSpeakerLedsForProgress (cyclingSpeakerLeds: {}, progress: {})".format(self.cyclingSpeakerLeds, self.progress))
+        # Not in progress mode: Nothing to do
         if not self.cyclingSpeakerLeds and not self.progress:
+            #self.logger.debug("cycleSpeakerLedsForProgress: Not active")
             return
         
         # Start cycling
         if not self.cyclingSpeakerLeds and self.progress:
+            self.logger.debug("Cycling starting (current network {} and room {})".format(self.curNetworkNb, self.curRoomNb))
             self.cyclingSpeakerLeds = True
+            self.blinkRefTime = time.time()
+            self.cycleSpeakerLeds()
             
         # Stop cycling
         if self.cyclingSpeakerLeds and not self.progress:
             self.cyclingSpeakerLeds = False
             # Switch on only the led corresponding to the current room/network 
-            self.setActiveSpeakerLeds(self.curNetworkNb, self.curRoomNb)
-            return
+            self.logger.debug("Cycling over: Switching on leds for network {} and room {}".format(self.curNetworkNb, self.curRoomNb))
+            #self.setActiveSpeakerLeds(self.curNetworkNb, self.curRoomNb)
+            #return
             
         # Continue cycling
         if self.cyclingSpeakerLeds and self.progress:
             # Cycle through all speaker leds
+            #self.logger.debug("cycleSpeakerLedsForProgress: Loop")
             if time.time() - self.blinkRefTime >= self.blinkPeriod:
+                self.logger.debug("cycleSpeakerLedsForProgress: Switch on next led")
                 self.blinkRefTime = time.time()
                 self.cycleSpeakerLeds()
                 
@@ -784,9 +792,11 @@ class UserInterface:
                     if (m.group(3) == "START"):
                         self.logger.debug("Command PROGRESS START")
                         self.progress = True
+                        self.logger.debug("self.progress: {}".format(self.progress))
                     elif (m.group(3) == "STOP"):
                         self.logger.debug("Command PROGRESS STOP")
                         self.progress = False
+                        self.logger.debug("self.progress: {}".format(self.progress))
                 else:
                    raise 
             except:
@@ -829,6 +839,7 @@ class UserInterface:
                     
                 self.blinkLedsForShift()
                 self.blinkLedsForAltPlaylist()
+                self.cycleSpeakerLedsForProgress()
  
         except KeyboardInterrupt:
             self.logger.info("Stop (Ctrl-C from main loop)") 
