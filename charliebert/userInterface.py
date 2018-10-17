@@ -751,22 +751,24 @@ class UserInterface:
         if not self.cyclingSpeakerLeds and not self.progress:
             #self.logger.debug("cycleSpeakerLedsForProgress: Not active")
             return
-        
-        # Start cycling
-        if not self.cyclingSpeakerLeds and self.progress:
-            self.logger.debug("Cycling starting (current network {} and room {})".format(self.curNetworkNb, self.curRoomNb))
-            self.cyclingSpeakerLeds = True
-            self.blinkRefTime = time.time()
-            self.cycleSpeakerLeds()
-            
+
         # Stop cycling
         if self.cyclingSpeakerLeds and not self.progress:
             self.cyclingSpeakerLeds = False
             # Switch on only the led corresponding to the current room/network 
-            self.logger.debug("Cycling over: Switching on leds for network {} and room {}".format(self.curNetworkNb, self.curRoomNb))
-            #self.setActiveSpeakerLeds(self.curNetworkNb, self.curRoomNb)
-            #return
+            self.logger.debug("Cycling over: Switching on leds for network {} and room {}".format(self.currentNetworkNb, self.currentRoomNb))
+            self.setActiveSpeakerLeds(self.currentNetworkNb, self.currentRoomNb)
+            return
             
+        # Start cycling
+        if not self.cyclingSpeakerLeds and self.progress:
+            self.currentNetworkNb = self.getActiveNetworkNb()
+            self.logger.debug("Activating alt-mode: Current room number is {:d}, network number is {:d}".format(self.currentRoomNb, self.currentNetworkNb))
+            self.logger.debug("Cycling starting (current network {} and room {})".format(self.currentNetworkNb, self.currentRoomNb))
+            self.cyclingSpeakerLeds = True
+            self.blinkRefTime = time.time()
+            self.cycleSpeakerLeds()
+           
         # Continue cycling
         if self.cyclingSpeakerLeds and self.progress:
             # Cycle through all speaker leds
@@ -775,6 +777,9 @@ class UserInterface:
                 self.logger.debug("cycleSpeakerLedsForProgress: Switch on next led")
                 self.blinkRefTime = time.time()
                 self.cycleSpeakerLeds()
+		# Prevent shutdown while completing a task
+		if self.reset is not None:
+		    self.reset.set()
                 
     def processCommands(self):
         if not self.p2uQueue.empty():
@@ -844,6 +849,8 @@ class UserInterface:
         except KeyboardInterrupt:
             self.logger.info("Stop (Ctrl-C from main loop)") 
             print("Stop (Ctrl-C)")
+        except Exception as e:
+            self.logger.error("Error in main loop: {}".format(str(e))) 
         finally:
             # clean up GPIO on exit  
             self.logger.debug("Cleaning up GPIO")

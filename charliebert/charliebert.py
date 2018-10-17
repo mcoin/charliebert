@@ -232,20 +232,12 @@ class PlayerInterfaceThread(threading.Thread):
                         if commandNb == 1:
                             self.p2uQ.put("PROGRESS START")
                             time.sleep(10)
-
-			    #time = 0
-			    #timeInterval = 1
-    			    #timer = threading.Event()
-			    #duration = 10
-            		    #while time < duration:
-			#	timer.wait(timeInterval)
-			#	time += timeInterval
-
                             self.p2uQ.put("PROGRESS STOP")
                         elif commandNb == 10:
                             # Import sonos playlists - soft 
                             # (only retrieve not yet exported sonos playlists,
                             # and only copy not yet copied music files)
+                            self.p2uQ.put("PROGRESS START")
                             self.logger.debug("Exporting sonos playlists...")
                             self.si.exportAllPlaylists(u'Office')            
                             self.logger.debug("Done.")
@@ -253,10 +245,12 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office')            
                             self.logger.debug("Done.")                                                                                                   
+                            self.p2uQ.put("PROGRESS STOP")
                         elif commandNb == 11:
                             # Import sonos playlists - medium
                             # (renew sonos playlist definitions,
                             # but only copy not yet copied music files)
+                            self.p2uQ.put("PROGRESS START")
                             self.logger.debug("Exporting sonos playlists...")
                             self.si.exportAllPlaylists(u'Office', True)            
                             self.logger.debug("Done.")
@@ -264,10 +258,12 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office')            
                             self.logger.debug("Done.")                                                                                                   
+                            self.p2uQ.put("PROGRESS STOP")
                         elif commandNb == 12:
                             # Import sonos playlists - hard
                             # (renew sonos playlist definitions,
                             # and also overwrite already copied music files)
+                            self.p2uQ.put("PROGRESS START")
                             self.logger.debug("Exporting sonos playlists...")
                             self.si.exportAllPlaylists(u'Office', True)            
                             self.logger.debug("Done.")
@@ -275,6 +271,7 @@ class PlayerInterfaceThread(threading.Thread):
                             self.logger.debug("Importing playlists into MPD...")
                             self.mi.importAllPlaylists(u'Office', True)
                             self.logger.debug("Done.")                                                                                                   
+                            self.p2uQ.put("PROGRESS STOP")
 
                         else:
                             self.logger.error("Command COMMAND: {:d}: Command does not exist".format(commandNb))

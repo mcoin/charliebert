@@ -377,9 +377,9 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
-        #mi.importPlaylist('zCharliebert_A04', 'Office')
-        #import sys
-        #sys.exit()
+        mi.importPlaylist('zCharliebert_D12', 'Office')
+        import sys
+        sys.exit()
 
         mi.importAllPlaylists('Office')
         import sys
