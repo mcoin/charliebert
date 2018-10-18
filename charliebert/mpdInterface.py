@@ -6,6 +6,7 @@ from time import sleep
 import time
 from cookielib import logger
 from playerInterface import Playlist
+import os
 
 class MpdInterface(PlayerInterface):
     def __init__(self, logger):
@@ -279,6 +280,7 @@ class MpdInterface(PlayerInterface):
     def importPlaylist(self, playlistName, room, overwrite=False):
         self.logger.debug("Importing playlist files")
         
+        copiedFiles = []
         try:
             self.logger.debug("Define Playlist object")
             playlist = Playlist(playlistName)
@@ -289,8 +291,7 @@ class MpdInterface(PlayerInterface):
             self.logger.debug(u'Playlist {}'.format(playlist.name))
                 
             self.logger.debug("Copying files")
-            playlist.copyFiles(u'music', u'toma', u'', overwrite, False, self.logger)
-                
+            copiedFiles = playlist.copyFiles(u'music', u'toma', u'', overwrite, False, self.logger)
         except:
             self.logger.error("Error while importing playlist '{}'".format(playlistName))
     
@@ -301,6 +302,11 @@ class MpdInterface(PlayerInterface):
         try:      
             self.logger.debug("Updating music library")
             self.client.update()
+            #if copiedFiles is not None:
+            #    for copiedFile in copiedFiles:
+            #        self.logger.debug(u'Adding copied file {} to  music library'.format(copiedFile))
+            #        self.client.update(copiedFile)
+
 
             self.logger.debug("Clearing playlist")
             self.client.clear()
@@ -336,7 +342,8 @@ class MpdInterface(PlayerInterface):
 #                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title)
 #                 self.client.findadd(u'file', file)
                 
-                (server, share, path) = parseUri(file)
+                (server, share, path) = playlist.parseUri(file, self.logger)
+                path = os.path.join(u'music', path)
                 self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', track '{}', path '{}'"
                                   .format(artist, album, title, track, path))
                 self.client.findadd(u'file', path)
@@ -399,6 +406,21 @@ if __name__ == '__main__':
         mi.importPlaylist('zCharliebert_D10', 'Office')
         mi.importPlaylist('zCharliebert_D11', 'Office')
         mi.importPlaylist('zCharliebert_D12', 'Office')
+        import sys
+        sys.exit()
+
+        mi.importPlaylist('zCharliebert_D01', 'Office', True)
+        mi.importPlaylist('zCharliebert_D02', 'Office', True)
+        mi.importPlaylist('zCharliebert_D03', 'Office', True)
+        mi.importPlaylist('zCharliebert_D04', 'Office', True)
+        mi.importPlaylist('zCharliebert_D05', 'Office', True)
+        mi.importPlaylist('zCharliebert_D06', 'Office', True)
+        mi.importPlaylist('zCharliebert_D07', 'Office', True)
+        mi.importPlaylist('zCharliebert_D08', 'Office', True)
+        mi.importPlaylist('zCharliebert_D09', 'Office', True)
+        mi.importPlaylist('zCharliebert_D10', 'Office', True)
+        mi.importPlaylist('zCharliebert_D11', 'Office', True)
+        mi.importPlaylist('zCharliebert_D12', 'Office', True)
         import sys
         sys.exit()
 

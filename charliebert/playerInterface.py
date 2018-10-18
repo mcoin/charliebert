@@ -50,7 +50,7 @@ class Playlist:
 #             logger.debug(u'All set')
 
 
-    def parseUri(self, uri):
+    def parseUri(self, uri, logger=None):
         if logger is not None:
             logger.debug(u'Parsing uri {}'.format(uri))
         m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', uri)
@@ -78,21 +78,24 @@ class Playlist:
             logger.debug(u'Copying tracks')
                     
         try:
+            copiedFiles = []
             for track in self.tracks:
                 file = self.tracks[track][u'uri']
 #                 m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', file)
 #                 
 #                 if logger is not None:
 #                     logger.debug(u'group 1 = {}\ngroup 2 = {}\ngroup 3 = {}'.format(m.group(1), m.group(2), m.group(3)))
-#         
+#           
 #                 server = u'{}.local'.format(m.group(1))
 #                 share = u'{}'.format(m.group(2))
 #                 path = u'{}'.format(m.group(3))
 #                 target= u'{}'.format(m.group(3))
-                
-                (server, share, path) = parseUri(file)
+                (server, share, path) = self.parseUri(file, logger)
                 target = path
                 
+                if logger is not None:
+                     logger.debug(u'server = {}\nshare = {}\npath = {}'.format(server, share, path))
+         
                 if basename:
                     target = os.path.basename(target)
                 
@@ -108,16 +111,16 @@ class Playlist:
                     continue
                 
                 dir = os.path.dirname(target)
-
+         
                 if logger is not None:
                     logger.debug(u'Target file: \'{}\''.format(target))
                     logger.debug(u'Dirname: \'{}\''.format(dir))
-        
+            
                 try:
                     os.makedirs(dir)
                 except OSError:
                     pass
-
+         
                 if logger is not None:
                     logger.debug(u'Converting strings')
                                     
@@ -131,17 +134,21 @@ class Playlist:
                 
                 if logger is not None:
                     logger.debug(u'Connection established, retrieving file')
-        
+            
                 with open(target, 'wb') as fp:
                     conn.retrieveFile(share, path, fp)
+         
+                copiedFiles.append(target)
                 
                 if logger is not None:
                     logger.debug(u'File retrieved')
                     
                 conn.close()
+         
+            return copiedFiles
         except:
             if logger is not None:
-                logger.error("user = {}\npassword = {}\nserver = {}\nshare = {}\ntarget = {}".format(user, password, server, share, target))
+                logger.error(u'user = {}\npassword = {}\nserver = {}\nshare = {}\ntarget = {}'.format(user, password, server, share, target))
 
     
 class PlayerInterface():
