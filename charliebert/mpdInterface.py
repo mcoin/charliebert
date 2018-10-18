@@ -324,13 +324,17 @@ class MpdInterface(PlayerInterface):
                 album = info[u'album']
                 title = info[u'title']
                 trackNb = int(track)
+                file = info[u'uri']
+                file = file.replace(u'//raspi3/intenso2/', u'music/')
+                file = file.replace(u'//raspi3/intenso/', u'music/')
 
                 ###self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
                 ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
                 #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}'".format(artist, album, title))
-                self.client.findadd(u'artist', artist, u'album', album, u'title', title)
+                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', file '{}'".format(artist, album, title, file))
+                #self.client.findadd(u'artist', artist, u'album', album, u'title', title)
+                self.client.findadd(u'file', file)
 
             self.client.save(playlistName)
 
@@ -377,6 +381,17 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
+        mi.importPlaylist('zCharliebert_D01', 'Office')
+        mi.importPlaylist('zCharliebert_D02', 'Office')
+        mi.importPlaylist('zCharliebert_D03', 'Office')
+        mi.importPlaylist('zCharliebert_D04', 'Office')
+        mi.importPlaylist('zCharliebert_D05', 'Office')
+        mi.importPlaylist('zCharliebert_D06', 'Office')
+        mi.importPlaylist('zCharliebert_D07', 'Office')
+        mi.importPlaylist('zCharliebert_D08', 'Office')
+        mi.importPlaylist('zCharliebert_D09', 'Office')
+        mi.importPlaylist('zCharliebert_D10', 'Office')
+        mi.importPlaylist('zCharliebert_D11', 'Office')
         mi.importPlaylist('zCharliebert_D12', 'Office')
         import sys
         sys.exit()
