@@ -49,6 +49,21 @@ class Playlist:
             self.tracks = data[u'tracks']
 #             logger.debug(u'All set')
 
+
+    def parseUri(self, uri):
+        if logger is not None:
+            logger.debug(u'Parsing uri {}'.format(uri))
+        m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', uri)
+                
+        if logger is not None:
+            logger.debug(u'group 1 = {}\ngroup 2 = {}\ngroup 3 = {}'.format(m.group(1), m.group(2), m.group(3)))
+
+        server = u'{}.local'.format(m.group(1))
+        share = u'{}'.format(m.group(2))
+        path = u'{}'.format(m.group(3))
+        
+        return (server, share, path)
+
     def copyFiles(self, destDir, user, password, overwrite=False, basename=False, logger=None):
         if logger is not None:
             logger.debug(u'Playlist.copyFiles')
@@ -65,15 +80,18 @@ class Playlist:
         try:
             for track in self.tracks:
                 file = self.tracks[track][u'uri']
-                m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', file)
+#                 m = re.search(u'//([^/]+)/([^/]+)/(.+)\s*$', file)
+#                 
+#                 if logger is not None:
+#                     logger.debug(u'group 1 = {}\ngroup 2 = {}\ngroup 3 = {}'.format(m.group(1), m.group(2), m.group(3)))
+#         
+#                 server = u'{}.local'.format(m.group(1))
+#                 share = u'{}'.format(m.group(2))
+#                 path = u'{}'.format(m.group(3))
+#                 target= u'{}'.format(m.group(3))
                 
-                if logger is not None:
-                    logger.debug(u'group 1 = {}\ngroup 2 = {}\ngroup 3 = {}'.format(m.group(1), m.group(2), m.group(3)))
-        
-                server = u'{}.local'.format(m.group(1))
-                share = u'{}'.format(m.group(2))
-                path = u'{}'.format(m.group(3))
-                target= u'{}'.format(m.group(3))
+                (server, share, path) = parseUri(file)
+                target = path
                 
                 if basename:
                     target = os.path.basename(target)

@@ -325,16 +325,22 @@ class MpdInterface(PlayerInterface):
                 title = info[u'title']
                 trackNb = int(track)
                 file = info[u'uri']
-                file = file.replace(u'//raspi3/intenso2/', u'music/')
-                file = file.replace(u'//raspi3/intenso/', u'music/')
-
-                ###self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
-                ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-                #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-                #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', file '{}'".format(artist, album, title, file))
-                #self.client.findadd(u'artist', artist, u'album', album, u'title', title)
-                self.client.findadd(u'file', file)
+#                 file = file.replace(u'//raspi3/intenso2/', u'music/')
+#                 file = file.replace(u'//raspi3/intenso/', u'music/')
+# 
+#                 ###self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
+#                 ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+#                 #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+#                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
+#                 self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', file '{}'".format(artist, album, title, file))
+#                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title)
+#                 self.client.findadd(u'file', file)
+                
+                (server, share, path) = parseUri(file)
+                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', track '{}', path '{}'"
+                                  .format(artist, album, title, track, path))
+                self.client.findadd(u'file', path)
+                
 
             self.client.save(playlistName)
 
