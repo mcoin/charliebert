@@ -7,6 +7,7 @@ import time
 from cookielib import logger
 from playerInterface import Playlist
 import os
+import re
 
 class MpdInterface(PlayerInterface):
     def __init__(self, logger):
@@ -304,9 +305,13 @@ class MpdInterface(PlayerInterface):
             self.client.update()
             #if copiedFiles is not None:
             #    for copiedFile in copiedFiles:
-            #        self.logger.debug(u'Adding copied file {} to  music library'.format(copiedFile))
-            #        self.client.update(copiedFile)
+            #        # This does not seem to work with the full file name, hence updating the whole dir
+            #        copiedFileDir = re.sub(r'/+[^/]*$', r'', copiedFile)
+            #        self.logger.debug(u'Updating music library (directory {})'.format(copiedFileDir))
+            #        self.client.update(copiedFileDir)
 
+            # Allow update to finish
+            time.sleep(2)
 
             self.logger.debug("Clearing playlist")
             self.client.clear()
@@ -394,6 +399,11 @@ if __name__ == '__main__':
     logger.info("Creating instance of MpdInterface") 
     mi = MpdInterface(logger)
     try:
+        #mi.importPlaylist('zCharliebert_A01', 'Office', True)
+        mi.importPlaylist('zCharliebert_A01', 'Office', False)
+        import sys
+        sys.exit()
+
         mi.importPlaylist('zCharliebert_D01', 'Office')
         mi.importPlaylist('zCharliebert_D02', 'Office')
         mi.importPlaylist('zCharliebert_D03', 'Office')
