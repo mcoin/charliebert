@@ -24,7 +24,7 @@ class MpdInterface(PlayerInterface):
         
         # Limitations
         self.minVolume = 20 # Make sure the music is audible...
-        self.maxVolume = 80 # ...but not painful
+        self.maxVolume = 60 # ...but not painful
 		
         
     def connect(self): 
@@ -69,7 +69,7 @@ class MpdInterface(PlayerInterface):
         
         return True
 
-    def startPlaylistBare(self, playlistName, room):
+    def __startPlaylistBare(self, playlistName, room):
         # Make sure we won't go deaf right now
         self.soundCheck(room)
         
@@ -101,7 +101,7 @@ class MpdInterface(PlayerInterface):
         self.connect()
         
         try:    
-            self.startPlaylistBare(playlistName, room)
+            self.__startPlaylistBare(playlistName, room)
         except:
             self.logger.error("Problem playing playlist '{}'".format(playlistName))
             return
@@ -119,10 +119,10 @@ class MpdInterface(PlayerInterface):
         
         try:    
             altPlaylistName = u'{}_alt'.format(playlistName)
-            self.startPlaylistBare(altPlaylistName, room)
+            self.__startPlaylistBare(altPlaylistName, room)
         except:
             try:
-                self.startPlaylistBare(playlistName, room)
+                self.__startPlaylistBare(playlistName, room)
             except:
                 self.logger.error("Problem playing playlist '{}'".format(playlistName))
                 return
@@ -250,19 +250,19 @@ class MpdInterface(PlayerInterface):
             
             # Enforce volume limits
             if vol < self.minVolume:
-                self.logger.debug("Upping volume to {:d} [would have been {:d}]".format(self.minVolume, newVol))
+                self.logger.debug(u'Upping volume to {:d} [would have been {:d}]'.format(self.minVolume, newVol))
                 self.client.setvol(self.minVolume)
             elif vol > self.maxVolume:
-                self.logger.debug("Limiting volume to {:d} [would have been {:d}]".format(self.maxVolume, newVol))
+                self.logger.debug(u'Limiting volume to {:d} [would have been {:d}]'.format(self.maxVolume, newVol))
                 self.client.setvol(self.maxVolume)
             newVol = int(self.client.status()['volume'])
         except:
-            self.logger.error("Problem adjusting volume (old volume: {:d}, new volume: {:d})".format(vol, newVol))
+            self.logger.error(u'Problem adjusting volume (old volume: {:d}, new volume: {:d})'.format(vol, newVol))
 
         #self.disconnect()
 
     def isCurrentlyPlaying(self, room):
-        self.logger.debug("Returning play status")
+        self.logger.debug(u'Returning play status')
         self.connect()
         
         try:
@@ -271,112 +271,139 @@ class MpdInterface(PlayerInterface):
             
             isCurrentlyPlaying = currentState == 'play'
         except:
-            self.logger.error("Problem determining play status (current state: {})".format(currentState))
+            self.logger.error(u'Problem determining play status (current state: {})'.format(currentState))
             isCurrentlyPlaying = False
         
         self.disconnect()
         
         return isCurrentlyPlaying
     
-    def importPlaylist(self, playlistName, room, overwrite=False):
-        self.logger.debug("Importing playlist files")
+    def copyPlaylistFiles(self, playlistName, room, overwrite=False):
+        self.logger.debug(u'Copying playlist files')
         
-        copiedFiles = []
         try:
-            self.logger.debug("Define Playlist object")
+            self.logger.debug(u'Define Playlist object')
             playlist = Playlist(playlistName)
             
-            self.logger.debug("Read JSON")
-            playlist.readFromFile(u'playlists/{}.json'.format(playlistName))
-            
-            self.logger.debug(u'Playlist {}'.format(playlist.name))
+            playlistFile = u'playlists/{}.json'.format(playlistName)
+            if os.path.exists(playlistFile):
+                self.logger.debug(u'Read JSON')
+                playlist.readFromFile(playlistFile)
                 
-            self.logger.debug("Copying files")
-            copiedFiles = playlist.copyFiles(u'music', u'toma', u'', overwrite, False, self.logger)
+                self.logger.debug(u'Playlist {}'.format(playlist.name))
+                    
+                self.logger.debug(u'Copying files')
+                playlist.copyFiles(u'music', u'toma', u'', overwrite, False, self.logger)
+            else:
+                self.logger.debug(u'Playlist file {} does not exist; skipping'.format(playlistFile))
         except:
-            self.logger.error("Error while importing playlist '{}'".format(playlistName))
-    
-        self.logger.debug("Adding playlist")
+            self.logger.error(u'Error while copying files for playlist "{}"'.format(playlistName))   
+
+    def updateLibrary(self):
+        self.logger.debug(u'Updating music library')
         
         self.connect()
         
         try:      
-            self.logger.debug("Updating music library")
+            self.logger.debug(u'Updating music library')
             self.client.update()
-            #if copiedFiles is not None:
-            #    for copiedFile in copiedFiles:
-            #        # This does not seem to work with the full file name, hence updating the whole dir
-            #        copiedFileDir = re.sub(r'/+[^/]*$', r'', copiedFile)
-            #        self.logger.debug(u'Updating music library (directory {})'.format(copiedFileDir))
-            #        self.client.update(copiedFileDir)
-
-            # Allow update to finish
-            time.sleep(2)
-
-            self.logger.debug("Clearing playlist")
-            self.client.clear()
-            self.logger.debug("Initializing playlist")
-            #playlistNameTmp = playlistName + '_tmp'
-            #self.logger.debug("Deleting possibly existing playlist {}".format(playlistNameTmp))
-            self.logger.debug("Deleting possibly existing playlist {}".format(playlistName))
-            try:
-                #self.client.rm(playlistNameTmp)
-                self.client.rm(playlistName)
-            except:
-                pass
-            
-            #for track in playlist.tracks:
-            for track, info in sorted(playlist.tracks.items(), key=lambda t: int(t[0])):
-                self.logger.debug("Adding track {:d}".format(int(track)))
-                #artist = playlist.tracks[track][u'artist']
-                #album = playlist.tracks[track][u'album']
-                #title = playlist.tracks[track][u'title']
-                artist = info[u'artist']
-                album = info[u'album']
-                title = info[u'title']
-                trackNb = int(track)
-                file = info[u'uri']
-#                 file = file.replace(u'//raspi3/intenso2/', u'music/')
-#                 file = file.replace(u'//raspi3/intenso/', u'music/')
-# 
-#                 ###self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', track)
-#                 ##self.client.searchaddpl(playlistNameTmp, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-#                 #self.client.searchaddpl(playlistName, u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-#                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title, u'track', trackNb)
-#                 self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', file '{}'".format(artist, album, title, file))
-#                 #self.client.findadd(u'artist', artist, u'album', album, u'title', title)
-#                 self.client.findadd(u'file', file)
-                
-                (server, share, path) = playlist.parseUri(file, self.logger)
-                path = os.path.join(u'music', path)
-                self.logger.debug(u"Adding track to playlist: artist '{}', album '{}', title '{}', track '{}', path '{}'"
-                                  .format(artist, album, title, track, path))
-                self.client.findadd(u'file', path)
-                
-
-            self.client.save(playlistName)
-
         except:
-            self.logger.error("Problem adding playlist '{}'".format(playlistName))
+            self.logger.error(u'Problem updating music library')
             raise
-            return
+        
+        self.disconnect()  
+        
+    def definePlaylist(self, playlistName, room):
+        self.logger.debug(u'Defining playlist {}'.format(playlistName))
+        
+        self.connect()
+        
+        try:      
+            self.logger.debug(u'Define Playlist object')
+            playlist = Playlist(playlistName)
+            
+            playlistFile = u'playlists/{}.json'.format(playlistName)
+            if os.path.exists(playlistFile):
+                self.logger.debug(u'Read JSON')
+                playlist.readFromFile(u'playlists/{}.json'.format(playlistName))
+                
+                self.logger.debug(u'Playlist {}'.format(playlist.name))
+                
+                self.logger.debug(u'Clearing playlist')
+                self.client.clear()
+                self.logger.debug(u'Initializing playlist')
+                self.logger.debug(u'Deleting possibly existing playlist {}'.format(playlistName))
+                try:
+                    self.client.rm(playlistName)
+                except:
+                    pass
+                
+                for track, info in sorted(playlist.tracks.items(), key=lambda t: int(t[0])):
+                    self.logger.debug(u'Adding track {:d}'.format(int(track)))
+    
+                    artist = info[u'artist']
+                    album = info[u'album']
+                    title = info[u'title']
+                    trackNb = int(track)
+                    file = info[u'uri']
+                    
+                    (server, share, path) = playlist.parseUri(file, self.logger)
+                    path = os.path.join(u'music', path)
+                    self.logger.debug(u'Adding track to playlist: artist "{}", album "{}", title "{}", track "{}", path "{}"'
+                                      .format(artist, album, title, track, path))
+                    self.client.findadd(u'file', path)
+                    
+    
+                self.client.save(playlistName)
+            else:
+                self.logger.debug(u'Playlist file {} does not exist; skipping'.format(playlistFile))
+        except:
+            self.logger.error(u'Problem adding playlist "{}"'.format(playlistName))
+            raise
         
         self.disconnect()            
+             
+    def importPlaylist(self, playlistName, room, overwrite=False):
+        self.logger.debug(u'Importing playlist {}'.format(playlistName))
+        self.copyPlaylistFiles(playlistName, room, overwrite)
+        
+        self.updateLibrary()
+     
+        self.definePlaylist(playlistName, room)     
             
     def importAllPlaylists(self, room, overwrite=False):
-        self.logger.debug("Importing all playlists")
+        self.logger.debug(u'Importing all playlists')
         
         try:
             playlistBasename = u'zCharliebert_'
             
-            for bank in ('A', 'B', 'C', 'D'):
-                for nb in range(1, 13):             
-                    playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
-                    self.importPlaylist(playlistName, room, overwrite)
-                    #return
+            # First copy files
+            for bank in (u'A', u'B', u'C', u'D'):
+                for kind in (u'', u'_alt'):
+                    for nb in range(1, 13):
+                        try:
+                            playlistName = u'{}{}{:02d}{}'.format(playlistBasename, bank, nb, kind)
+                            self.copyPlaylistFiles(playlistName, room, overwrite)
+                            
+                            self.updateLibrary()
+                        except:
+                            self.logger.error(u'Error while copying files for playlist {}'.format(playlistName))                    
+                    
+            # ...then update the playlist definitions
+            # (if the playlist is set right after the files have been copied, 
+            # it seems the music library is not yet properly updated, leading
+            # to missing tracks and/or empty playlists)
+            for bank in (u'A', u'B', u'C', u'D'):
+                for kind in (u'', u'_alt'):
+                    for nb in range(1, 13):             
+                        playlistName = u'{}{}{:02d}{}'.format(playlistBasename, bank, nb, kind)
+                        try:
+                            self.definePlaylist(playlistName, room)
+                        except:
+                            self.logger.error(u'Error while defining playlist {}'.format(playlistName))      
 
         except:
-            self.logger.error("Problem importing playlists")
+            self.logger.error(u'Problem importing playlists')
             raise
 
 

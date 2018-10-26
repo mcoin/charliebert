@@ -297,54 +297,55 @@ class SonosInterface(PlayerInterface):
             
             self.logger.debug(u'Playlist {} ({:d} items)'.format(playlistName, queueSize))
             
-            playlist = Playlist(playlistName)
-            
-            sp.play()
-            sp.pause()
-            
-            # Retrieve track info for each item in the queue
-            itemNb = 0
-            while itemNb < queueSize:
-                info = sp.get_current_track_info()
-                itemNb = int(info[u'playlist_position'])
-                artist = info[u'artist']
-                title = info[u'title']
-                album = info[u'album']
-                uri = info[u'uri']
-                uri = urllib.unquote(uri).decode("utf-8")
-                uri = uri.replace(u'x-file-cifs:', u'')
+            if queueSize > 0:
+                playlist = Playlist(playlistName)
                 
-                self.logger.debug(u"    {:d} Artist: {}".format(itemNb, artist))
-                self.logger.debug(u"    {:d} Album: {}".format(itemNb, album))
-                self.logger.debug(u"    {:d} Title: {}".format(itemNb, title))
-                self.logger.debug(u"    {:d} URI: {}".format(itemNb, uri))
+                sp.play()
+                sp.pause()
                 
-                playlist.addTrack(itemNb, artist, album, title, uri)
+                # Retrieve track info for each item in the queue
+                itemNb = 0
+                while itemNb < queueSize:
+                    info = sp.get_current_track_info()
+                    itemNb = int(info[u'playlist_position'])
+                    artist = info[u'artist']
+                    title = info[u'title']
+                    album = info[u'album']
+                    uri = info[u'uri']
+                    uri = urllib.unquote(uri).decode("utf-8")
+                    uri = uri.replace(u'x-file-cifs:', u'')
+                    
+                    self.logger.debug(u"    {:d} Artist: {}".format(itemNb, artist))
+                    self.logger.debug(u"    {:d} Album: {}".format(itemNb, album))
+                    self.logger.debug(u"    {:d} Title: {}".format(itemNb, title))
+                    self.logger.debug(u"    {:d} URI: {}".format(itemNb, uri))
+                    
+                    playlist.addTrack(itemNb, artist, album, title, uri)
+                    
+                    try:
+                        sp.next()
+                    except:
+                        break
+                    
+    #             json = playlist.toJSON()
+                
+                sp.stop()
                 
                 try:
-                    sp.next()
-                except:
-                    break
-                
-#             json = playlist.toJSON()
-            
-            sp.stop()
-            
-            try:
-                os.mkdir(u'playlists')
-            except OSError:
-                pass
-             
-            playlist.writeToFile(u'playlists/{}.json'.format(playlistName))
-            if archiveDir is not None:
-                try:
-                    os.mkdir(u'playlists/{}'.format(archiveDir))
+                    os.mkdir(u'playlists')
                 except OSError:
                     pass
-                playlist.writeToFile(u'playlists/{}/{}.json'.format(archiveDir, playlistName))
+                 
+                playlist.writeToFile(u'playlists/{}.json'.format(playlistName))
+                if archiveDir is not None:
+                    try:
+                        os.mkdir(u'playlists/{}'.format(archiveDir))
+                    except OSError:
+                        pass
+                    playlist.writeToFile(u'playlists/{}/{}.json'.format(archiveDir, playlistName))
+                    
+    #             self.logger.debug(u'JSON: {}'.format(json))
                 
-#             self.logger.debug(u'JSON: {}'.format(json))
-            
             # Clean up
             sp.clear_queue()
         except:
@@ -362,10 +363,11 @@ class SonosInterface(PlayerInterface):
             room = u'Office'
             playlistBasename = u'zCharliebert_'
             
-            for bank in ('A', 'B', 'C', 'D'):
-                for nb in range(1, 13):             
-                    playlistName = u'{}{}{:02d}'.format(playlistBasename, bank, nb)
-                    self.exportPlaylistDetails(playlistName, room, archiveDir, overwrite)
+            for bank in (u'A', u'B', u'C', u'D'):
+                for kind in (u'', u'_alt'):
+                    for nb in range(1, 13):             
+                        playlistName = u'{}{}{:02d}{}'.format(playlistBasename, bank, nb, kind)
+                        self.exportPlaylistDetails(playlistName, room, archiveDir, overwrite)
         except:
             self.logger.error("Problem exporting playlists")
 
