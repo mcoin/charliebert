@@ -93,9 +93,9 @@ class PlayerInterfaceThread(threading.Thread):
             self.pi = self.mi
             
         self.extractCovers = ExtractCovers(self.logger)
-        self.extractCovers.pdflatexPath = u'/opt/local/bin/pdflatex'
-        self.extractCovers.mp4artPath = u'/opt/local/bin/mp4art'
-        self.extractCovers.ffmpegPath = u'/usr/local/bin/ffmpeg'
+        self.extractCovers.pdflatexPath = u'/usr/bin/pdflatex'
+        self.extractCovers.mp4artPath = u'/usr/bin/mp4art'
+        self.extractCovers.ffmpegPath = u'/usr/bin/avconv'
 
     def readConfig(self):
         try:
