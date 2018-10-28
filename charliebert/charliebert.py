@@ -12,6 +12,7 @@ import os
 from userInterface import UserInterface
 from sonosInterface import SonosInterface
 from mpdInterface import MpdInterface
+from extractCovers import ExtractCovers
 from datetime import datetime
 try:
     import ConfigParser as configparser # For python 2
@@ -90,6 +91,11 @@ class PlayerInterfaceThread(threading.Thread):
             self.pi = self.si
         else:
             self.pi = self.mi
+            
+        self.extractCovers = ExtractCovers(self.logger)
+        self.extractCovers.pdflatexPath = u'/opt/local/bin/pdflatex'
+        self.extractCovers.mp4artPath = u'/opt/local/bin/mp4art'
+        self.extractCovers.ffmpegPath = u'/usr/local/bin/ffmpeg'
 
     def readConfig(self):
         try:
@@ -232,6 +238,10 @@ class PlayerInterfaceThread(threading.Thread):
                         if commandNb == 1:
                             self.p2uQ.put("PROGRESS START")
                             time.sleep(10)
+                            self.p2uQ.put("PROGRESS STOP")
+                        elif commandNb == 7:
+                            self.p2uQ.put("PROGRESS START")
+                            self.extractCovers.createPlaylistKey()
                             self.p2uQ.put("PROGRESS STOP")
                         elif commandNb == 10:
                             # Import sonos playlists - soft 
