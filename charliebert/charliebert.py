@@ -69,9 +69,9 @@ class PlayerInterfaceThread(threading.Thread):
                 
         self.room = "Office"
         #self.room = "Bedroom"
-        self.availableNetworks = ('aantgr', 'AP2')
-        self.availableNetworkIndices = {'aantgr': 2, 'AP2': 1, 'charliebert': 3}
-        self.network = "aantgr"
+        self.availableNetworks = ('aagmr', 'AP2')
+        self.availableNetworkIndices = {'aagmr': 2, 'AP2': 1, 'charliebert': 3}
+        self.network = "aagmr"
         self.availablePlaylistBasenames = "zCharliebert"
         self.playlistBasename = "zCharliebert"
         self.availablePlayers = ('Sonos', 'Mpd')
@@ -296,7 +296,7 @@ class PlayerInterfaceThread(threading.Thread):
                         roomNb = int(m.group(5))
                         self.logger.debug("Command ROOM: {:d}".format(roomNb))
 
-                        if self.network == "aantgr":
+                        if self.network == "aagmr":
                             if roomNb == 1:
                                 self.room = "Bedroom"
                             elif roomNb == 2:
@@ -342,7 +342,7 @@ class PlayerInterfaceThread(threading.Thread):
                                 self.logger.debug("Switching player to Sonos")
                                 self.pi = self.si
                             if networkNb == 2:
-                                self.changeNetwork("aantgr")
+                                self.changeNetwork("aagmr")
                             elif networkNb == 1:
                                 self.changeNetwork("AP2")
                         elif networkNb == 3:
@@ -385,7 +385,7 @@ class PlayerInterfaceThread(threading.Thread):
         #country=GB
         #
         #network={
-        #    ssid="aantgr"
+        #    ssid="aagmr"
         #    psk="********"
         #    key_mgmt=WPA-PSK
         #    priority=10
@@ -397,7 +397,7 @@ class PlayerInterfaceThread(threading.Thread):
         #    priority=1
         #}
 
-        if network == "aantgr":
+        if network == "aagmr":
             os.system("wpa_cli select_network 0")
         elif network == "AP2":
             os.system("wpa_cli select_network 1")
@@ -507,7 +507,7 @@ def initConfig(logger, config):
     logger.debug("Setting initial config")
     config.add_section('PlayerInterface')
     config.set('PlayerInterface', 'room', 'Office')
-    config.set('PlayerInterface', 'network', 'aantgr')
+    config.set('PlayerInterface', 'network', 'aagmr')
     config.set('PlayerInterface', 'playlistBasename', 'zCharliebert')
     config.set('PlayerInterface', 'player', 'sonos')
 
